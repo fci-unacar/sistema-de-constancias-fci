@@ -2,7 +2,7 @@ import { useState } from 'react';
 import FormPanel from '../components/form/FormPanel';
 import PreviewDocument from '../components/document/PreviewDocument';
 import Icon from '../components/atoms/Icon';
-import { TIPO_CONSTANCIA, TIPO_LABEL } from '../constants/tipos';
+import { TIPO_BADGE_CLASS, TIPO_LABEL } from '../constants/tipos';
 import { todayStr } from '../utils/spanishText';
 import { semestreParaFecha, periodosDeSemestre } from '../hooks/useCalendario';
 import { requiredKeys } from '../data/formFields';
@@ -53,11 +53,7 @@ export default function NuevaConstanciaView({
             <Icon name="picture_as_pdf" className="text-[20px] text-secondary" />
             <span className="font-semibold text-on-surface text-label-md">Vista previa oficial</span>
             <span
-              className={`rounded px-space-xs py-space-2xs font-bold uppercase text-label-sm ${
-                tipo === TIPO_CONSTANCIA.PROMEDIO
-                  ? 'bg-secondary-fixed text-on-secondary-fixed'
-                  : 'bg-primary-fixed text-on-primary-fixed'
-              }`}
+              className={`rounded px-space-xs py-space-2xs font-bold uppercase text-label-sm ${TIPO_BADGE_CLASS[tipo]}`}
             >
               {TIPO_LABEL[tipo]}
             </span>

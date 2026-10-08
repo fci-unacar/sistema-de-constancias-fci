@@ -2,6 +2,13 @@ import { useMemo } from 'react';
 import Icon from '../components/atoms/Icon';
 import { TIPO_CONSTANCIA, TIPO_LABEL } from '../constants/tipos';
 
+const TIPOS_EN_GRAFICA = [
+  { tipo: TIPO_CONSTANCIA.NORMAL, barClass: 'bg-primary' },
+  { tipo: TIPO_CONSTANCIA.PROMEDIO, barClass: 'bg-secondary' },
+  { tipo: TIPO_CONSTANCIA.BUENA_CONDUCTA, barClass: 'bg-on-tertiary-container' },
+  { tipo: TIPO_CONSTANCIA.TERMINACION, barClass: 'bg-secondary-fixed-dim' },
+];
+
 function StatTile({ icon, label, value, accent = 'text-primary' }) {
   return (
     <div className="flex flex-col gap-space-2xs rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
@@ -19,18 +26,18 @@ export default function InicioView({ historial, onVerHistorial }) {
     const reales = historial.filter((e) => !e.isExample);
     const vigentes = reales.filter((e) => e.estado !== 'anulada');
     const anuladas = reales.filter((e) => e.estado === 'anulada');
-    const normales = vigentes.filter((e) => e.tipo === TIPO_CONSTANCIA.NORMAL).length;
-    const promedios = vigentes.filter((e) => e.tipo === TIPO_CONSTANCIA.PROMEDIO).length;
+    const porTipo = Object.fromEntries(
+      TIPOS_EN_GRAFICA.map(({ tipo }) => [tipo, vigentes.filter((e) => e.tipo === tipo).length]),
+    );
     return {
       total: vigentes.length,
       anuladas: anuladas.length,
-      normales,
-      promedios,
+      porTipo,
       folioReciente: reales[0]?.folio ?? '—',
     };
   }, [historial]);
 
-  const maxTipo = Math.max(stats.normales, stats.promedios, 1);
+  const maxTipo = Math.max(...Object.values(stats.porTipo), 1);
   const ultimas = historial.slice(0, 5);
 
   return (
@@ -44,30 +51,20 @@ export default function InicioView({ historial, onVerHistorial }) {
       <div className="rounded-xl bg-surface-container-lowest p-space-lg shadow-sm">
         <h2 className="mb-space-md font-semibold text-primary text-title-md">Por tipo de constancia</h2>
         <div className="flex flex-col gap-space-sm">
-          <div>
-            <div className="mb-space-2xs flex items-center justify-between text-label-sm">
-              <span className="font-semibold text-on-surface">{TIPO_LABEL[TIPO_CONSTANCIA.NORMAL]}</span>
-              <span className="text-on-surface-variant">{stats.normales}</span>
+          {TIPOS_EN_GRAFICA.map(({ tipo, barClass }) => (
+            <div key={tipo}>
+              <div className="mb-space-2xs flex items-center justify-between text-label-sm">
+                <span className="font-semibold text-on-surface">{TIPO_LABEL[tipo]}</span>
+                <span className="text-on-surface-variant">{stats.porTipo[tipo]}</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-surface-container-low">
+                <div
+                  className={`h-full rounded-full ${barClass}`}
+                  style={{ width: `${(stats.porTipo[tipo] / maxTipo) * 100}%` }}
+                />
+              </div>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-surface-container-low">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${(stats.normales / maxTipo) * 100}%` }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="mb-space-2xs flex items-center justify-between text-label-sm">
-              <span className="font-semibold text-on-surface">{TIPO_LABEL[TIPO_CONSTANCIA.PROMEDIO]}</span>
-              <span className="text-on-surface-variant">{stats.promedios}</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-surface-container-low">
-              <div
-                className="h-full rounded-full bg-secondary"
-                style={{ width: `${(stats.promedios / maxTipo) * 100}%` }}
-              />
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 

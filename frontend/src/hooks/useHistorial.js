@@ -4,6 +4,26 @@ import { seedHistorial } from '../data/seedHistorial';
 
 const STORAGE_KEY = 'constancias-fci-historial-v1';
 
+const FOLIO_INICIAL = 101;
+const FOLIO_RE = /^FCI-\d{4}-(\d+)$/;
+
+/**
+ * Folio consecutivo (Regla F1): "FCI-<año actual>-<n>", compartido entre
+ * tipos. El número sigue al más alto ya emitido y no se reinicia al cambiar
+ * de año (FCI-2026-348 → FCI-2027-349), igual que la secuencia propuesta en
+ * supabase/migrations. Se toma el máximo y no el tamaño del historial para
+ * que importar respaldos no lo haga repetir ni brincar; las constancias de
+ * ejemplo no cuentan.
+ */
+export function siguienteFolio(historial, anio = new Date().getFullYear()) {
+  const ultimo = historial
+    .filter((e) => !e.isExample)
+    .map((e) => Number(FOLIO_RE.exec(e.folio)?.[1]))
+    .filter(Number.isFinite)
+    .reduce((max, n) => Math.max(max, n), FOLIO_INICIAL - 1);
+  return `FCI-${anio}-${ultimo + 1}`;
+}
+
 /** Entradas antiguas (antes de anulación/reimpresión) no traen estos campos. */
 function withDefaults(entry) {
   return { estado: 'vigente', descargas: 1, ...entry };
@@ -26,9 +46,7 @@ export function useHistorial() {
     saveJSON(STORAGE_KEY, historial);
   }, [historial]);
 
-  // Folio simulado (Regla F1): consecutivo compartido entre tipos, año fijo
-  // en 2026 para este maquetado. El backend real decide el esquema final.
-  const nextFolio = `FCI-2026-${100 + historial.length + 1}`;
+  const nextFolio = siguienteFolio(historial);
 
   function registrarConstancia({ tipo, data }) {
     const entry = {

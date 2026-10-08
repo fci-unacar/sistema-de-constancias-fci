@@ -377,8 +377,8 @@ valor por default, marcado en la propia interfaz:
 
 - **Un solo rol de usuario**: hay login, pero todas las cuentas pueden hacer
   lo mismo (sin permisos todavía).
-- **Folio consecutivo compartido** entre tipos de constancia, año fijo 2026
-  (`useHistorial.js`).
+- **Folio consecutivo compartido** entre tipos de constancia, con el año actual;
+  el número no se reinicia al cambiar de año (`useHistorial.js`).
 - **Catálogo de programas en `localStorage`** (`hooks/useProgramas.js`),
   sin panel de administración todavía (ver "Pantallas" arriba) — por
   navegador/equipo, no compartido.

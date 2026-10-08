@@ -142,6 +142,68 @@ export const FORM_FIELDS = {
       hint: () => 'Por default hoy — editable',
     },
   ],
+
+  [TIPO_CONSTANCIA.BUENA_CONDUCTA]: [
+    { group: 'Datos del alumno' },
+    {
+      name: 'alumno',
+      label: 'Nombre completo del alumno',
+      type: 'text',
+      placeholder: 'Ej. Juan Pérez López',
+      required: true,
+    },
+    { name: 'matricula', label: 'Matrícula', type: 'text', placeholder: 'Ej. 000000', required: true },
+    {
+      name: 'programa',
+      label: 'Programa educativo',
+      type: 'select',
+      optionsSource: 'programas',
+      required: true,
+    },
+    {
+      name: 'periodoIngreso',
+      label: 'Periodo escolar de ingreso',
+      type: 'text',
+      placeholder: 'Ej. agosto 2024',
+      required: true,
+      hint: () => 'Se escribe tal cual: "desde el periodo escolar agosto 2024"',
+    },
+    { group: 'Expedición' },
+    {
+      name: 'fechaExpedicion',
+      label: 'Fecha de expedición',
+      type: 'date',
+      required: true,
+      hint: () => 'Por default hoy — editable',
+    },
+  ],
+
+  [TIPO_CONSTANCIA.TERMINACION]: [
+    { group: 'Datos del alumno' },
+    {
+      name: 'alumno',
+      label: 'Nombre completo del alumno',
+      type: 'text',
+      placeholder: 'Ej. Juan Pérez López',
+      required: true,
+    },
+    { name: 'matricula', label: 'Matrícula', type: 'text', placeholder: 'Ej. 000000', required: true },
+    {
+      name: 'programa',
+      label: 'Programa educativo',
+      type: 'select',
+      optionsSource: 'programas',
+      required: true,
+    },
+    { group: 'Expedición' },
+    {
+      name: 'fechaExpedicion',
+      label: 'Fecha de expedición',
+      type: 'date',
+      required: true,
+      hint: () => 'Por default hoy — editable',
+    },
+  ],
 };
 
 /** Junta los nombres de los campos obligatorios de un tipo, expandiendo los rangos de fecha. */

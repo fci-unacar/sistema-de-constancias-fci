@@ -36,7 +36,7 @@ export function seedHistorial() {
         matricula: '020837',
         fechaConsulta: '2026-09-07',
         reinscripcion: 3,
-        programa: 'Maestría en Tecnologías de Información Emergentes',
+        programa: 'Ingeniería en Tecnologías de Cómputo y Comunicación',
         semestreCursado: 'Febrero 2026',
         promedioSemestre: '92.00',
         promedioGeneral: '90.00',

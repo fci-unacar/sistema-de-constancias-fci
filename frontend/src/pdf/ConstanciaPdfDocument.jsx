@@ -79,12 +79,22 @@ const styles = StyleSheet.create({
     marginTop: 3,
     color: '#44474e',
   },
+  ccp: {
+    marginTop: 24,
+    fontSize: 9,
+    lineHeight: 1.3,
+  },
+  bold: {
+    fontFamily: 'Times-Bold',
+  },
 });
 
 /** Runs de utils/constanciaText.js como <Text> anidados (equivalente a spans en línea). */
 function Runs({ runs }) {
   return runs.map((run, i) => (
-    <Text key={i}>{'value' in run ? run.value || run.placeholder : run.text}</Text>
+    <Text key={i} style={run.bold ? styles.bold : undefined}>
+      {'value' in run ? run.value || run.placeholder : run.text}
+    </Text>
   ));
 }
 
@@ -94,7 +104,7 @@ function Runs({ runs }) {
  * desalineados.
  */
 export default function ConstanciaPdfDocument({ tipo, data, folio }) {
-  const { addressLines, paragraphs } = getConstanciaContent(tipo, data);
+  const { addressLines, paragraphs, cierre, firma, ccp } = getConstanciaContent(tipo, data);
 
   return (
     <Document title={`Constancia FCI-${folio}`} author="Facultad de Ciencias de la Información — UNACAR">
@@ -110,11 +120,7 @@ export default function ConstanciaPdfDocument({ tipo, data, folio }) {
 
         <Text style={styles.folio}>Constancia - FCI-{folio}</Text>
 
-        <Text style={styles.addr}>
-          {addressLines[0]}
-          {'\n'}
-          {addressLines[1]}
-        </Text>
+        <Text style={styles.addr}>{addressLines.join('\n')}</Text>
 
         {paragraphs.map((runs, i) => (
           <Text key={i} style={styles.paragraph}>
@@ -122,17 +128,17 @@ export default function ConstanciaPdfDocument({ tipo, data, folio }) {
           </Text>
         ))}
 
-        <Text style={styles.closing}>A t e n t a m e n t e</Text>
+        <Text style={styles.closing}>{cierre}</Text>
         <Text style={styles.closing}>&ldquo;Por la Grandeza de México&rdquo;</Text>
 
         <View style={styles.signWrap}>
           <View style={styles.signRule} />
-          <Text style={styles.signName}>Mtra. Saide Dariola Duran Martin</Text>
-          <Text style={styles.signRole}>
-            Secretaria Administrativa de la Facultad de Ciencias de la Información
-          </Text>
-          <Text style={styles.signEmail}>sduran@delfin.unacar.mx</Text>
+          <Text style={styles.signName}>{firma.nombre}</Text>
+          {firma.cargo && <Text style={styles.signRole}>{firma.cargo}</Text>}
+          {firma.email && <Text style={styles.signEmail}>{firma.email}</Text>}
         </View>
+
+        {ccp.length > 0 && <Text style={styles.ccp}>{ccp.join('\n')}</Text>}
       </Page>
     </Document>
   );

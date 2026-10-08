@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { loadJSON, saveJSON } from '../utils/storage';
 import { PROGRAMAS_INICIALES } from '../data/programas';
 
-const STORAGE_KEY = 'constancias-fci-programas-v1';
+// v2: el catálogo v1 traía la Maestría, para la que la Facultad todavía
+// no emite constancias; la clave nueva hace que cada navegador tome la semilla
+// actualizada (el panel de catálogo aún no permite editarlo, así que no
+// se pierden cambios del usuario).
+const STORAGE_KEY = 'constancias-fci-programas-v2';
 
 /**
  * Catálogo de programas educativos (Regla P1), ahora editable desde el

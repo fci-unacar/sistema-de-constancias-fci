@@ -7,5 +7,5 @@
 export const PROGRAMAS_INICIALES = [
   'Ingeniería en Sistemas Computacionales',
   'Ingeniería en Diseño Multimedia',
-  'Maestría en Tecnologías de Información Emergentes',
+  'Ingeniería en Tecnologías de Cómputo y Comunicación',
 ];

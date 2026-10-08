@@ -5,7 +5,7 @@
 -- aplicación todavía no habla con ninguna base de datos. Se infirió de la
 -- forma que tienen los objetos guardados hoy en localStorage:
 --   - frontend/src/hooks/useHistorial.js  (clave constancias-fci-historial-v1)
---   - frontend/src/hooks/useProgramas.js  (clave constancias-fci-programas-v1)
+--   - frontend/src/hooks/useProgramas.js  (clave constancias-fci-programas-v2)
 --   - frontend/src/data/seedHistorial.js  (forma del campo "data")
 --
 -- Revísalo y ajústalo antes de aplicarlo. Si prefieres partir de cero,
@@ -93,5 +93,5 @@ alter table public.constancias enable row level security;
 insert into public.programas (nombre) values
   ('Ingeniería en Sistemas Computacionales'),
   ('Ingeniería en Diseño Multimedia'),
-  ('Maestría en Tecnologías de Información Emergentes')
+  ('Ingeniería en Tecnologías de Cómputo y Comunicación')
 on conflict (nombre) do nothing;

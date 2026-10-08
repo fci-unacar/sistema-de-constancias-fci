@@ -7,6 +7,8 @@ const TITLES = {
   [VISTA.HISTORIAL]: 'Historial de Constancias',
   [VISTA.NUEVA_NORMAL]: 'Emisión de Constancia de Reinscripción',
   [VISTA.NUEVA_PROMEDIO]: 'Emisión de Constancia de Promedio',
+  [VISTA.NUEVA_BUENA_CONDUCTA]: 'Emisión de Carta de Buena Conducta',
+  [VISTA.NUEVA_TERMINACION]: 'Emisión de Constancia de Terminación de Estudios',
   [VISTA.CALENDARIO]: 'Calendario Escolar',
 };
 

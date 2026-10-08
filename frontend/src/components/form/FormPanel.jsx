@@ -10,6 +10,8 @@ import { TextInput, NumberInput, SelectInput, DateInput, DateRangeInput } from '
 const TITLES = {
   [TIPO_CONSTANCIA.NORMAL]: 'Constancia de Reinscripción (Normal)',
   [TIPO_CONSTANCIA.PROMEDIO]: 'Constancia de Promedio',
+  [TIPO_CONSTANCIA.BUENA_CONDUCTA]: 'Carta de Buena Conducta',
+  [TIPO_CONSTANCIA.TERMINACION]: 'Constancia de Terminación de Estudios',
 };
 
 function renderControl(field, data, setValue, programas) {

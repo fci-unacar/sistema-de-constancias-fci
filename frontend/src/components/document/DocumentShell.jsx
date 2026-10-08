@@ -4,13 +4,14 @@ import logoFci from '../../assets/logo-fci.png';
 
 /**
  * Membrete, folio y cierre/firma — el texto fijo de la plantilla
- * (Regla PDF1) que es idéntico en ambos tipos de constancia. Los
- * párrafos variables se pasan como children. Tipografía serif a
- * propósito: es la misma que se usa en el PDF real generado con
- * @react-pdf/renderer, para que esta vista previa no prometa un
- * documento distinto del que se descarga.
+ * (Regla PDF1). El cierre, la firma y las copias vienen de
+ * getConstanciaContent (utils/constanciaText.js) porque cambian según
+ * quién firma cada tipo. Los párrafos variables se pasan como children.
+ * Tipografía serif a propósito: es la misma que se usa en el PDF real
+ * generado con @react-pdf/renderer, para que esta vista previa no
+ * prometa un documento distinto del que se descarga.
  */
-export default function DocumentShell({ folio, titulo, children }) {
+export default function DocumentShell({ folio, titulo, cierre, firma, ccp = [], children }) {
   return (
     <div className="doc-paper w-full max-w-[680px] rounded-sm bg-surface-container-lowest px-10 py-11 text-on-surface shadow-xl">
       <div className="mb-space-lg flex items-center justify-between gap-space-sm">
@@ -32,16 +33,23 @@ export default function DocumentShell({ folio, titulo, children }) {
 
       {children}
 
-      <p className="mt-[26px] text-center">A t e n t a m e n t e</p>
+      <p className="mt-[26px] text-center">{cierre}</p>
       <p className="text-center italic">&ldquo;Por la Grandeza de México&rdquo;</p>
       <div className="mt-space-xl text-center">
         <div className="mx-auto mb-space-2xs w-[230px] border-t border-on-surface" />
-        <div className="text-[13.5px] font-bold">Mtra. Saide Dariola Duran Martin</div>
-        <div className="text-on-surface-variant text-label-md">
-          Secretaria Administrativa de la Facultad de Ciencias de la Información
-        </div>
-        <div className="mt-space-2xs text-on-surface-variant text-label-sm">sduran@delfin.unacar.mx</div>
+        <div className="text-[13.5px] font-bold">{firma.nombre}</div>
+        {firma.cargo && <div className="text-on-surface-variant text-label-md">{firma.cargo}</div>}
+        {firma.email && (
+          <div className="mt-space-2xs text-on-surface-variant text-label-sm">{firma.email}</div>
+        )}
       </div>
+      {ccp.length > 0 && (
+        <div className="mt-space-lg text-on-surface-variant text-label-sm">
+          {ccp.map((line) => (
+            <div key={line}>{line}</div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

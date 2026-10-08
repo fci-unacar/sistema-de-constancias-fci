@@ -1,11 +1,6 @@
 import { useMemo } from 'react';
-import { TIPO_LABEL } from '../../constants/tipos';
+import { TIPO_BADGE_CLASS, TIPO_LABEL } from '../../constants/tipos';
 import Icon from '../atoms/Icon';
-
-const BADGE_CLASS = {
-  normal: 'bg-primary-fixed text-on-primary-fixed',
-  promedio: 'bg-secondary-fixed text-on-secondary-fixed',
-};
 
 export default function HistorialTable({ historial, query, onQueryChange, onView }) {
   const filtered = useMemo(() => {
@@ -69,7 +64,7 @@ export default function HistorialTable({ historial, query, onQueryChange, onView
                   <td className="px-space-md py-space-sm">{item.data.alumno || '—'}</td>
                   <td className="px-space-md py-space-sm">
                     <span
-                      className={`rounded-full px-space-xs py-space-2xs font-bold uppercase tracking-wide text-label-sm ${BADGE_CLASS[item.tipo]}`}
+                      className={`rounded-full px-space-xs py-space-2xs font-bold uppercase tracking-wide text-label-sm ${TIPO_BADGE_CLASS[item.tipo]}`}
                     >
                       {TIPO_LABEL[item.tipo]}
                     </span>

@@ -6,6 +6,8 @@ const NAV_ITEMS = [
   { view: VISTA.HISTORIAL, label: 'Historial de Constancias', icon: 'dataset' },
   { view: VISTA.NUEVA_NORMAL, label: 'Nueva: Reinscripción', icon: 'assignment_turned_in' },
   { view: VISTA.NUEVA_PROMEDIO, label: 'Nueva: Promedio', icon: 'grade' },
+  { view: VISTA.NUEVA_BUENA_CONDUCTA, label: 'Nueva: Buena Conducta', icon: 'workspace_premium' },
+  { view: VISTA.NUEVA_TERMINACION, label: 'Nueva: Terminación', icon: 'history_edu' },
   { view: VISTA.CALENDARIO, label: 'Calendario Escolar', icon: 'calendar_month' },
 ];
 
