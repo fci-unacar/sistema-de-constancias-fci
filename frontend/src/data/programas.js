@@ -1,8 +1,8 @@
 /**
- * Catálogo de programas educativos (Regla P1) — semilla inicial para
- * localStorage la primera vez que corre la app (ver hooks/useProgramas.js).
- * Desde ahí en adelante el catálogo real vive en localStorage y es
- * editable desde el panel "Catálogo de Programas".
+ * Catálogo de programas educativos (Regla P1). Con login real el catálogo
+ * vive en la base de datos (tabla programas) y esta lista solo se usa
+ * mientras carga o en modo de demostración (ver hooks/useProgramas.js). No
+ * hay pantalla para editarlo: se cambia desde Supabase.
  */
 export const PROGRAMAS_INICIALES = [
   'Ingeniería en Sistemas Computacionales',

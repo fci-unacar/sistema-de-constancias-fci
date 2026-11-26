@@ -11,10 +11,7 @@ const NAV_ITEMS = [
   { view: VISTA.CALENDARIO, label: 'Calendario Escolar', icon: 'calendar_month' },
 ];
 
-const SOON_ITEMS = [
-  { label: 'Catálogo de Programas', icon: 'school' },
-  { label: 'Configuración de Plantillas', icon: 'draw' },
-];
+const SOON_ITEMS = [{ label: 'Configuración de Plantillas', icon: 'draw' }];
 
 export default function Sidebar({ view, onChangeView, user, onLogout }) {
   return (
