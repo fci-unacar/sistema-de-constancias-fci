@@ -11,8 +11,8 @@ const TITULOS = {
 };
 
 /** Vista previa de cualquier tipo de constancia — el texto vive en utils/constanciaText.js. */
-export default function PreviewDocument({ tipo, data, folio }) {
-  const { addressLines, paragraphs, cierre, firma, ccp } = getConstanciaContent(tipo, data);
+export default function PreviewDocument({ tipo, data, folio, firmantes }) {
+  const { addressLines, paragraphs, cierre, firma, ccp } = getConstanciaContent(tipo, data, firmantes);
 
   return (
     <DocumentShell

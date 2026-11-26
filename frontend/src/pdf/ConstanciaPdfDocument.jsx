@@ -103,8 +103,8 @@ function Runs({ runs }) {
  * pantalla (ambos leen utils/constanciaText.js) para que nunca queden
  * desalineados.
  */
-export default function ConstanciaPdfDocument({ tipo, data, folio }) {
-  const { addressLines, paragraphs, cierre, firma, ccp } = getConstanciaContent(tipo, data);
+export default function ConstanciaPdfDocument({ tipo, data, folio, firmantes }) {
+  const { addressLines, paragraphs, cierre, firma, ccp } = getConstanciaContent(tipo, data, firmantes);
 
   return (
     <Document title={`Constancia FCI-${folio}`} author="Facultad de Ciencias de la Información — UNACAR">

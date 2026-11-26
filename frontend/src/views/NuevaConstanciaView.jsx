@@ -25,6 +25,7 @@ export default function NuevaConstanciaView({
   onGenerate,
   programas,
   calendario,
+  firmantes,
 }) {
   const [data, setData] = useState(() => initialState(tipo, initialData, calendario));
 
@@ -60,7 +61,7 @@ export default function NuevaConstanciaView({
           </div>
         </div>
         <div className="flex justify-center rounded-xl bg-surface-container-low p-space-md shadow-inner">
-          <PreviewDocument tipo={tipo} data={data} folio={folioSuffix} />
+          <PreviewDocument tipo={tipo} data={data} folio={folioSuffix} firmantes={firmantes} />
         </div>
       </section>
     </div>

@@ -10,6 +10,7 @@ const TITLES = {
   [VISTA.NUEVA_BUENA_CONDUCTA]: 'Emisión de Carta de Buena Conducta',
   [VISTA.NUEVA_TERMINACION]: 'Emisión de Constancia de Terminación de Estudios',
   [VISTA.CALENDARIO]: 'Calendario Escolar',
+  [VISTA.PLANTILLAS]: 'Configuración de Plantillas',
 };
 
 export default function TopBar({ view, historialCount, onSearch, user, onLogout }) {

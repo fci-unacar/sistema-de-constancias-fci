@@ -14,6 +14,7 @@ export const VISTA = {
   NUEVA_BUENA_CONDUCTA: 'nueva-buena-conducta',
   NUEVA_TERMINACION: 'nueva-terminacion',
   CALENDARIO: 'calendario',
+  PLANTILLAS: 'plantillas',
 };
 
 /** Tipo de constancia correspondiente a cada vista "Nueva", si aplica. */

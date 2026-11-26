@@ -15,6 +15,7 @@ import { getSupabase } from './supabase.js';
 import { authRouter } from './auth.js';
 import { datosRouter } from './constancias.js';
 import { calendarioRouter } from './calendario.js';
+import { plantillasRouter } from './plantillas.js';
 
 const app = express();
 
@@ -71,6 +72,7 @@ app.use('/auth', authRouter);
 // aplican requireAuth a todas sus rutas, por eso van al final: cualquier
 // ruta que no exista responde 401 sin sesión.
 app.use('/calendario', calendarioRouter);
+app.use('/plantillas', plantillasRouter);
 app.use(datosRouter);
 
 app.listen(config.port, () => {

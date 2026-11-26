@@ -29,8 +29,8 @@ function slug(text) {
  * `folio` es el sufijo mostrado en la vista previa (p. ej. "2026-101"),
  * sin el prefijo "FCI-".
  */
-export async function downloadConstanciaPdf({ tipo, data, folio }) {
-  const blob = await pdf(createElement(ConstanciaPdfDocument, { tipo, data, folio })).toBlob();
+export async function downloadConstanciaPdf({ tipo, data, folio, firmantes }) {
+  const blob = await pdf(createElement(ConstanciaPdfDocument, { tipo, data, folio, firmantes })).toBlob();
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement('a');

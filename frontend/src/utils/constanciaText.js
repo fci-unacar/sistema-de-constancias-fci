@@ -1,4 +1,5 @@
 import { TIPO_CONSTANCIA } from '../constants/tipos';
+import { FIRMANTES_INICIALES } from '../data/firmantesIniciales';
 import { ordinalWord, formatDateRange, formatDateNumeric, dateWordParts } from './spanishText';
 
 /**
@@ -115,15 +116,16 @@ function getPromedioContent(data) {
 }
 
 /** Carta de buena conducta — la firma el Director, no la Secretaria Administrativa. */
-function getBuenaConductaContent(data) {
+function getBuenaConductaContent(data, firmantes) {
   const expedicion = dateWordParts(data.fechaExpedicion);
+  const { director } = firmantes;
 
   return {
     addressLines: ['A quien corresponda:'],
     paragraphs: [
       [
         {
-          text: 'El que suscribe Dr. José Alonso Pérez Cruz, Director de la Facultad de Ciencias de la Información, de la Universidad Autónoma del Carmen, hace constar que el C. ',
+          text: `${director.articulo === 'La' ? 'La' : 'El'} que suscribe ${director.nombre}, ${director.cargo}, de la Universidad Autónoma del Carmen, hace constar que el C. `,
         },
         v(data.alumno, '‹nombre del alumno›'),
         { text: ' con matrícula número ' },
@@ -150,16 +152,13 @@ function getBuenaConductaContent(data) {
       [{ text: 'Sin más por el momento le envío un cordial saludo.' }],
     ],
     cierre: 'Atentamente,',
-    firma: {
-      nombre: 'Dr. José Alonso Pérez Cruz',
-      cargo: 'Director de la Facultad de Ciencias de la Información',
-    },
-    ccp: ['C.c.p. Archivo', 'FCI/sddm.'],
+    firma: { nombre: director.nombre, cargo: director.cargo, email: director.email },
+    ccp: ['C.c.p. Archivo', firmantes.ccpIniciales].filter(Boolean),
   };
 }
 
 /** Constancia de terminación de estudios (100% de créditos, certificado pendiente). */
-function getTerminacionContent(data) {
+function getTerminacionContent(data, firmantes) {
   const expedicion = dateWordParts(data.fechaExpedicion);
 
   return {
@@ -195,30 +194,38 @@ function getTerminacionContent(data) {
         { text: '.' },
       ],
     ],
-    firma: { nombre: 'Mtra. Saide D. Duran Martín' },
+    // La plantilla de terminación solo lleva el nombre, sin cargo ni correo.
+    firma: { nombre: firmantes.secretaria.nombre },
   };
 }
 
-/** Cierre y firma de las constancias que no declaran los suyos (reinscripción y promedio). */
+/** Cierre de las constancias que no declaran el suyo (reinscripción, promedio y terminación). */
 const CIERRE_DEFAULT = 'A t e n t a m e n t e';
-const FIRMA_DEFAULT = {
-  nombre: 'Mtra. Saide Dariola Duran Martin',
-  cargo: 'Secretaria Administrativa de la Facultad de Ciencias de la Información',
-  email: 'sduran@delfin.unacar.mx',
-};
 
-function getContentByTipo(tipo, data) {
+function getContentByTipo(tipo, data, firmantes) {
   if (tipo === TIPO_CONSTANCIA.PROMEDIO) return getPromedioContent(data);
-  if (tipo === TIPO_CONSTANCIA.BUENA_CONDUCTA) return getBuenaConductaContent(data);
-  if (tipo === TIPO_CONSTANCIA.TERMINACION) return getTerminacionContent(data);
+  if (tipo === TIPO_CONSTANCIA.BUENA_CONDUCTA) return getBuenaConductaContent(data, firmantes);
+  if (tipo === TIPO_CONSTANCIA.TERMINACION) return getTerminacionContent(data, firmantes);
   return getNormalContent(data);
 }
 
 /**
  * Arma el contenido del tipo de constancia dado: encabezado de dirección,
  * párrafos, fórmula de cierre, firma y copias (`ccp`, opcional).
+ *
+ * Firmantes, en orden de prioridad: los que la constancia guardó al
+ * emitirse (data.firmantes), los vigentes en "Configuración de Plantillas"
+ * (para la vista previa de una constancia nueva) y, si no hay ninguno, los
+ * originales (constancias emitidas antes de que se guardara la firma).
  */
-export function getConstanciaContent(tipo, data) {
-  const content = getContentByTipo(tipo, data);
-  return { cierre: CIERRE_DEFAULT, firma: FIRMA_DEFAULT, ccp: [], ...content };
+export function getConstanciaContent(tipo, data, firmantesVigentes) {
+  const firmantes = data.firmantes ?? firmantesVigentes ?? FIRMANTES_INICIALES;
+  const { secretaria } = firmantes;
+  const content = getContentByTipo(tipo, data, firmantes);
+  return {
+    cierre: CIERRE_DEFAULT,
+    firma: { nombre: secretaria.nombre, cargo: secretaria.cargo, email: secretaria.email },
+    ccp: [],
+    ...content,
+  };
 }

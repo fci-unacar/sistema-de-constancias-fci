@@ -9,9 +9,8 @@ const NAV_ITEMS = [
   { view: VISTA.NUEVA_BUENA_CONDUCTA, label: 'Nueva: Buena Conducta', icon: 'workspace_premium' },
   { view: VISTA.NUEVA_TERMINACION, label: 'Nueva: Terminación', icon: 'history_edu' },
   { view: VISTA.CALENDARIO, label: 'Calendario Escolar', icon: 'calendar_month' },
+  { view: VISTA.PLANTILLAS, label: 'Configuración de Plantillas', icon: 'draw' },
 ];
-
-const SOON_ITEMS = [{ label: 'Configuración de Plantillas', icon: 'draw' }];
 
 export default function Sidebar({ view, onChangeView, user, onLogout }) {
   return (
@@ -52,23 +51,6 @@ export default function Sidebar({ view, onChangeView, user, onLogout }) {
               </button>
             );
           })}
-
-          <div className="my-space-2xs h-px bg-white/10" />
-
-          {SOON_ITEMS.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              disabled
-              className="flex cursor-default items-center gap-space-sm rounded px-space-sm py-space-xs text-left text-on-primary-container/40 text-body-md"
-            >
-              <Icon name={item.icon} className="text-[18px]" />
-              <span className="flex-1">{item.label}</span>
-              <span className="rounded bg-white/10 px-space-2xs py-0.5 text-[10px] uppercase tracking-wide">
-                Pronto
-              </span>
-            </button>
-          ))}
         </nav>
       </div>
 

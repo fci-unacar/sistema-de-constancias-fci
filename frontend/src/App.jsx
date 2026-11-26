@@ -10,6 +10,8 @@ import CalendarioView from './views/CalendarioView';
 import { useHistorial } from './hooks/useHistorial';
 import { useProgramas } from './hooks/useProgramas';
 import { useCalendario } from './hooks/useCalendario';
+import { usePlantillas } from './hooks/usePlantillas';
+import PlantillasView from './views/PlantillasView';
 import { useToast } from './hooks/useToast';
 import { VISTA, TIPO_POR_VISTA } from './constants/tipos';
 import { todayStr } from './utils/spanishText';
@@ -35,6 +37,7 @@ export default function App({ user, onLogout }) {
   const generando = useRef(false);
   const { programas } = useProgramas();
   const { calendario, guardarCalendario, pdfUrl: calendarioPdfUrl, subirPdf } = useCalendario();
+  const { firmantes, guardarFirmantes } = usePlantillas();
   const { message, showToast } = useToast();
 
   function changeView(nextView) {
@@ -57,9 +60,13 @@ export default function App({ user, onLogout }) {
     }
   }
 
-  async function handleGenerate({ tipo, data }) {
+  async function handleGenerate({ tipo, data: datosFormulario }) {
     if (generando.current) return;
     generando.current = true;
+    // Copia de quién firma hoy: si mañana cambia el Director o la
+    // Secretaria, esta constancia se sigue reimprimiendo con su firma original.
+    const { secretaria, director, ccpIniciales } = firmantes;
+    const data = { ...datosFormulario, firmantes: { secretaria, director, ccpIniciales } };
     let entry;
     try {
       entry = await registrarConstancia({ tipo, data });
@@ -91,7 +98,8 @@ export default function App({ user, onLogout }) {
    * emisión nueva) y el folio nuevo se asigna al generar.
    */
   function handleDuplicate(item) {
-    const data = { ...item.data };
+    // Sin la firma guardada de la original: la nueva emisión lleva a los firmantes vigentes.
+    const { firmantes: _firmaOriginal, ...data } = item.data;
     if (data.fechaExpedicion) data.fechaExpedicion = todayStr();
     if (data.fechaConsulta) data.fechaConsulta = todayStr();
     setPrefill({ tipo: item.tipo, data });
@@ -175,6 +183,17 @@ export default function App({ user, onLogout }) {
                 onGenerate={handleGenerate}
                 programas={programas}
                 calendario={calendario}
+                firmantes={firmantes}
+              />
+            )}
+            {view === VISTA.PLANTILLAS && (
+              <PlantillasView
+                // Igual que el calendario: se vuelve a montar cuando llegan
+                // firmantes nuevos de la base.
+                key={firmantes.actualizado ?? 'inicial'}
+                firmantes={firmantes}
+                onGuardar={guardarFirmantes}
+                showToast={showToast}
               />
             )}
             {view === VISTA.CALENDARIO && (

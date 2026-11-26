@@ -1,7 +1,7 @@
 /**
- * Pruebas de punta a punta de la API (73 casos): autenticación, historial
+ * Pruebas de punta a punta de la API: autenticación, historial
  * y folios (incluida concurrencia), importación de respaldos, programas,
- * calendario y PDF, y que la base no se pueda leer con la llave pública.
+ * calendario y PDF, firmantes, y que la base no se pueda leer con la llave pública.
  *
  * ⚠️ USA LA BASE DE DATOS REAL (no hay una de pruebas). Por eso:
  *   - Pide confirmación explícita (PRUEBAS_CONFIRMAR=si).
@@ -44,6 +44,10 @@ const resultados = [];
 function registrar(area, prueba, ok, detalle) {
   resultados.push({ area, prueba, ok: ok === true ? 'PASA' : ok === 'obs' ? 'OBS' : 'FALLA', detalle: String(detalle ?? '') });
 }
+/** Constancias que crea esta batería, para borrar solo esas al final. */
+const creadasPorPrueba = new Set();
+const FOLIOS_IMPORTADOS_PRUEBA = ['FCI-2026-5000', 'FCI-2026-5001', 'FCI-2026-6001', 'FCI-2026-6101'];
+
 async function api(metodo, ruta, { token, body, headers = {}, raw } = {}) {
   const h = { ...headers };
   if (token) h.Authorization = `Bearer ${token}`;
@@ -51,6 +55,7 @@ async function api(metodo, ruta, { token, body, headers = {}, raw } = {}) {
   const r = await fetch(API + ruta, { method: metodo, headers: h, body: raw ?? (body !== undefined ? JSON.stringify(body) : undefined) });
   const tipo = r.headers.get('content-type') ?? '';
   const datos = tipo.includes('json') ? await r.json().catch(() => null) : tipo.includes('pdf') ? Buffer.from(await r.arrayBuffer()) : await r.text();
+  if (metodo === 'POST' && ruta === '/constancias' && r.status === 201) creadasPorPrueba.add(datos.constancia.id);
   return { status: r.status, datos, headers: r.headers };
 }
 const pass = () => randomBytes(18).toString('base64url');
@@ -61,6 +66,7 @@ const pass = () => randomBytes(18).toString('base64url');
 const previas = (await admin.from('constancias').select('id')).data.map((x) => x.id);
 const folioPrevio = Number((await admin.rpc('folio_siguiente_vista')).data?.split('-')[2]);
 const calPrevio = (await admin.from('configuracion').select('*').eq('clave', 'calendario').maybeSingle()).data;
+const plantPrevia = (await admin.from('configuracion').select('*').eq('clave', 'plantillas').maybeSingle()).data;
 const pdfPrevioRes = await admin.storage.from('archivos').download('calendario/calendario.pdf');
 const pdfPrevio = pdfPrevioRes.data ? Buffer.from(await pdfPrevioRes.data.arrayBuffer()) : null;
 console.log(`Estado previo: ${previas.length} constancias, calendario ${calPrevio ? 'sí' : 'no'}, PDF ${pdfPrevio ? pdfPrevio.length + ' bytes' : 'no'}`);
@@ -93,7 +99,7 @@ try {
   // -------------------------------------------------------------------
   // Autenticación
   // -------------------------------------------------------------------
-  const protegidas = [['GET', '/constancias'], ['POST', '/constancias'], ['PATCH', '/constancias/00000000-0000-0000-0000-000000000000'], ['POST', '/constancias/importar'], ['GET', '/programas'], ['GET', '/calendario'], ['PUT', '/calendario'], ['GET', '/calendario/pdf'], ['PUT', '/calendario/pdf'], ['GET', '/auth/me']];
+  const protegidas = [['GET', '/constancias'], ['POST', '/constancias'], ['PATCH', '/constancias/00000000-0000-0000-0000-000000000000'], ['POST', '/constancias/importar'], ['GET', '/programas'], ['GET', '/calendario'], ['PUT', '/calendario'], ['GET', '/calendario/pdf'], ['PUT', '/calendario/pdf'], ['GET', '/plantillas'], ['PUT', '/plantillas'], ['GET', '/auth/me']];
   const sinToken = [];
   for (const [m, p] of protegidas) sinToken.push((await api(m, p)).status);
   registrar('Auth', `Las ${protegidas.length} rutas protegidas rechazan sin sesión (401)`, sinToken.every((s) => s === 401), sinToken.join(','));
@@ -250,6 +256,49 @@ try {
   registrar('Calendario', 'El PDF no se guarda en caché del navegador', /no-store/.test(r.headers.get('cache-control') ?? ''), r.headers.get('cache-control'));
 
   // -------------------------------------------------------------------
+  // Configuración de plantillas (quién firma)
+  // -------------------------------------------------------------------
+  const firmantesOk = {
+    secretaria: { nombre: 'Lic. Prueba Secretaria', cargo: 'Secretaria Administrativa de Prueba', email: '' },
+    director: { articulo: 'La', nombre: 'Dra. Prueba Directora', cargo: 'Directora de Prueba', email: 'directora@example.com' },
+    ccpIniciales: 'FCI/pp.',
+  };
+  r = await api('GET', '/plantillas', { token: T2 });
+  registrar('Plantillas', 'Leer firmantes → 200', r.status === 200 && 'plantillas' in (r.datos ?? {}), `${r.status} ${r.datos?.plantillas ? 'configurados' : 'sin configurar (usa los originales)'}`);
+  for (const [desc, p] of [
+    ['sin nombre de la Secretaria', { ...firmantesOk, secretaria: { ...firmantesOk.secretaria, nombre: '  ' } }],
+    ['sin cargo del Director', { ...firmantesOk, director: { ...firmantesOk.director, cargo: '' } }],
+    ['con correo inválido', { ...firmantesOk, secretaria: { ...firmantesOk.secretaria, email: 'no-es-correo' } }],
+    ['con apertura distinta de El/La', { ...firmantesOk, director: { ...firmantesOk.director, articulo: 'Los' } }],
+    ['con un nombre de más de 150 caracteres', { ...firmantesOk, secretaria: { ...firmantesOk.secretaria, nombre: 'x'.repeat(151) } }],
+    ['vacío', null],
+  ]) {
+    r = await api('PUT', '/plantillas', { token: T2, body: { plantillas: p } });
+    registrar('Plantillas', `Guardar ${desc} → 400`, r.status === 400, `${r.status} ${r.datos?.error ?? ''}`);
+  }
+  r = await api('PUT', '/plantillas', {
+    token: T2,
+    body: { plantillas: { ...firmantesOk, secretaria: { ...firmantesOk.secretaria, nombre: '  Lic. Prueba Secretaria  ' }, extra: 'ignorar' } },
+  });
+  registrar(
+    'Plantillas',
+    'Guardar firmantes válidos → 200, recorta espacios e ignora campos extra',
+    r.status === 200 && r.datos?.plantillas?.secretaria?.nombre === 'Lic. Prueba Secretaria' && r.datos?.plantillas?.director?.articulo === 'La' && !('extra' in (r.datos?.plantillas ?? {})),
+    `${r.status} ${r.datos?.plantillas?.secretaria?.nombre}`,
+  );
+  r = await api('GET', '/plantillas', { token: T2 });
+  registrar('Plantillas', 'Se leen de vuelta los firmantes guardados', r.datos?.plantillas?.director?.nombre === 'Dra. Prueba Directora' && r.datos?.plantillas?.ccpIniciales === 'FCI/pp.', r.datos?.plantillas?.director?.nombre);
+  const quienPl = (await admin.from('configuracion').select('actualizado_por').eq('clave', 'plantillas').single()).data?.actualizado_por;
+  registrar('Plantillas', 'Registra quién cambió los firmantes', quienPl === A.email, quienPl);
+  // Una constancia guarda la copia de sus firmantes y no cambia aunque cambien después.
+  r = await api('POST', '/constancias', { token: T2, body: { tipo: 'buena-conducta', data: { alumno: 'Prueba', firmantes: firmantesOk } } });
+  const conFirma = r.datos?.constancia;
+  await api('PUT', '/plantillas', { token: T2, body: { plantillas: { ...firmantesOk, director: { ...firmantesOk.director, nombre: 'Dr. Otro Director' } } } });
+  r = await api('GET', '/constancias', { token: T2 });
+  const guardada = r.datos?.constancias?.find((c) => c.id === conFirma?.id);
+  registrar('Plantillas', 'La constancia conserva los firmantes con que se emitió', guardada?.data?.firmantes?.director?.nombre === 'Dra. Prueba Directora', guardada?.data?.firmantes?.director?.nombre);
+
+  // -------------------------------------------------------------------
   // Acceso directo a la base desde el navegador (lo que no debe pasar)
   // -------------------------------------------------------------------
   const anon = { apikey: PUBLISHABLE, Authorization: `Bearer ${PUBLISHABLE}` };
@@ -284,10 +333,16 @@ try {
   // Limpieza
   // -------------------------------------------------------------------
   const limp = [];
-  const { data: ahora } = await admin.from('constancias').select('id');
-  const sobrantes = ahora.map((c) => c.id).filter((id) => !previas.includes(id));
+  // Solo lo que creó esta batería: las que generó por la API (ids
+  // registrados en api()) y las que importó (folios fijos de prueba). Así no
+  // se borra una constancia real que alguien haya generado mientras corría.
+  const { data: importadas } = await admin.from('constancias').select('id').in('folio', FOLIOS_IMPORTADOS_PRUEBA);
+  const sobrantes = [...creadasPorPrueba, ...importadas.map((c) => c.id)];
   for (let i = 0; i < sobrantes.length; i += 100) await admin.from('constancias').delete().in('id', sobrantes.slice(i, i + 100));
   limp.push(`${sobrantes.length} constancias de prueba borradas`);
+  if (plantPrevia) await admin.from('configuracion').upsert(plantPrevia);
+  else await admin.from('configuracion').delete().eq('clave', 'plantillas');
+  limp.push('firmantes restaurados');
   if (calPrevio) await admin.from('configuracion').upsert(calPrevio);
   else await admin.from('configuracion').delete().eq('clave', 'calendario');
   limp.push('calendario restaurado');
