@@ -13,6 +13,7 @@
 import { Router } from 'express';
 import { requireAuth } from './auth.js';
 import { getSupabase } from './supabase.js';
+import { esFechaValida } from './validacion.js';
 
 export const datosRouter = Router();
 datosRouter.use(requireAuth);
@@ -36,6 +37,20 @@ function aFrontend(fila) {
     fechaGeneracion: fila.fecha_generacion,
     data: fila.data,
   };
+}
+
+/**
+ * Una entrada de respaldo se puede importar si sus campos opcionales, de
+ * venir, tienen valores que la tabla acepta.
+ */
+function entradaImportable(e) {
+  if (!e || typeof e !== 'object' || Array.isArray(e)) return false;
+  if (e.estado !== undefined && !ESTADOS.has(e.estado)) return false;
+  if (e.fechaGeneracion !== undefined && e.fechaGeneracion !== null && !esFechaValida(e.fechaGeneracion)) return false;
+  if (e.descargas !== undefined && e.descargas !== null && !(Number.isInteger(e.descargas) && e.descargas >= 0)) {
+    return false;
+  }
+  return true;
 }
 
 function falloDeBase(res, error, contexto) {
@@ -119,10 +134,16 @@ datosRouter.post('/constancias/importar', async (req, res) => {
     return res.status(400).json({ error: 'El respaldo no tiene el formato esperado.' });
   }
 
-  const { data: agregadas, error } = await getSupabase().rpc('importar_constancias', { p_entradas: entradas });
+  // Un registro malformado no debe tumbar todo el respaldo (Postgres
+  // rechazaría la importación completa): se descartan aquí y se importan
+  // los demás. El resto de los filtros (folio, tipo, ejemplos, duplicados)
+  // los aplica importar_constancias() en la base.
+  const validas = entradas.filter(entradaImportable);
+
+  const { data: agregadas, error } = await getSupabase().rpc('importar_constancias', { p_entradas: validas });
   if (error) return falloDeBase(res, error, 'No se pudo importar el respaldo');
 
-  return res.json({ agregadas });
+  return res.json({ agregadas, descartadas: entradas.length - validas.length });
 });
 
 // ---------------------------------------------------------------------

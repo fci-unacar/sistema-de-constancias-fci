@@ -10,6 +10,7 @@
 import express, { Router } from 'express';
 import { requireAuth } from './auth.js';
 import { getSupabase } from './supabase.js';
+import { esFechaValida } from './validacion.js';
 
 export const calendarioRouter = Router();
 calendarioRouter.use(requireAuth);
@@ -19,7 +20,6 @@ const BUCKET = 'archivos';
 const RUTA_PDF = 'calendario/calendario.pdf';
 /** Igual que el límite del bucket. */
 const MAX_PDF = 20 * 1024 * 1024;
-const FECHA_RE = /^(\d{4}-\d{2}-\d{2})?$/;
 const CAMPOS_FECHA = ['periodoInicio', 'periodoFin', 'vacacionesInicio', 'vacacionesFin'];
 
 function falloDeBase(res, error, contexto) {
@@ -57,7 +57,8 @@ function limpiarFechas(entrada) {
     const limpio = { id: s.id.slice(0, 20), nombre: s.nombre.slice(0, 200) };
     for (const campo of CAMPOS_FECHA) {
       const valor = s[campo] ?? '';
-      if (typeof valor !== 'string' || !FECHA_RE.test(valor)) return null;
+      // Vacía mientras se captura, o una fecha que exista (no basta el formato).
+      if (valor !== '' && !esFechaValida(valor)) return null;
       limpio[campo] = valor;
     }
     semestres.push(limpio);
