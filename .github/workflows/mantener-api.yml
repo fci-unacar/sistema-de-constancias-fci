@@ -1,0 +1,32 @@
+name: Mantener API despierta
+
+# Render (plan gratuito) duerme la API tras 15 minutos sin peticiones y la
+# primera petición después tarda ~1 minuto. Esto la consulta cada 10
+# minutos en horario de oficina para que la Secretaría no espere.
+#
+# Horario: lunes a viernes de 7:00 a 20:00 en Campeche (UTC-6, sin horario
+# de verano) = 13:00 a 02:00 UTC. Fuera de ese horario se deja dormir: así
+# el servicio no se acerca al límite de 750 horas al mes del plan gratuito.
+#
+# /health también consulta la base de datos, lo que ayuda a que Supabase no
+# pause el proyecto por inactividad.
+#
+# GitHub puede retrasar unos minutos las tareas programadas; con 10 minutos
+# de intervalo sigue quedando margen antes de los 15 de Render.
+on:
+  schedule:
+    - cron: "*/10 13-23 * * 1-5" # 7:00–17:59 Campeche, lunes a viernes
+    - cron: "*/10 0-1 * * 2-6" # 18:00–19:59 Campeche, lunes a viernes
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Consultar /health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Despertar la API
+        run: |
+          curl --fail --silent --show-error \
+            --max-time 120 --retry 3 --retry-delay 15 --retry-all-errors \
+            https://constancias-fci-api.onrender.com/health

@@ -173,8 +173,16 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
 - [ ] Desde ahí corre solo cada domingo, guarda los respaldos 30 días y la
       conexión semanal ayuda a que Supabase no se pause.
 
+- [ ] "Mantener API despierta" (`.github/workflows/mantener-api.yml`)
+      consulta `/health` cada 10 minutos de lunes a viernes, de 7:00 a
+      20:00 (Campeche), para que Render no duerma la API en horario de
+      oficina. No necesita secrets. Fuera de ese horario la primera
+      petición puede tardar ~1 minuto. Si algún día se quiere que nunca
+      duerma, el plan Starter de Render cuesta 7 USD/mes.
+
 > GitHub desactiva las tareas programadas si el repositorio pasa 60 días
-> sin cambios. Si pasa, se reactivan desde la pestaña Actions.
+> sin cambios. Si pasa, se reactivan desde la pestaña Actions (las dos:
+> respaldo y mantener despierta).
 
 ## Fase 7 — Dominio (único costo)
 

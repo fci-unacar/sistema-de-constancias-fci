@@ -17,6 +17,19 @@ export function apiConfigurada() {
   return BASE_URL !== '';
 }
 
+/**
+ * Manda una petición a /health sin esperar la respuesta. En el plan
+ * gratuito de Render la API se duerme y tarda ~1 minuto en despertar; si
+ * se llama al abrir la página, para cuando la persona termina de escribir
+ * su contraseña la API ya está lista (o casi).
+ */
+export function despertarApi() {
+  if (!apiConfigurada()) return;
+  fetch(apiUrl('/health')).catch(() => {
+    // Solo es para despertarla; los errores reales los reporta la petición que sí importa.
+  });
+}
+
 /** Une la URL base con una ruta, tolerando barras de sobra en cualquiera de las dos. */
 export function apiUrl(path) {
   if (!apiConfigurada()) {
