@@ -4,16 +4,16 @@
  * Es el único componente que habla con Supabase, usando la llave
  * service_role. El frontend nunca toca la base de datos directamente.
  *
- * Estado actual: todavía no expone endpoints de negocio porque la app
- * sigue persistiendo en localStorage (ver README, "Qué falta"). Lo que ya
- * está listo es el arranque, el CORS, el inicio de sesión (auth.js) y el
- * health check que Render consulta para decidir si el despliegue quedó sano.
+ * Expone el inicio de sesión (auth.js), el historial de constancias y el
+ * catálogo de programas (constancias.js), y el health check que Render
+ * consulta para decidir si el despliegue quedó sano.
  */
 import express from 'express';
 import cors from 'cors';
 import { config, supabaseConfigurado } from './config.js';
 import { getSupabase } from './supabase.js';
 import { authRouter } from './auth.js';
+import { datosRouter } from './constancias.js';
 
 const app = express();
 
@@ -21,7 +21,8 @@ const app = express();
 // vería a todos los usuarios con la misma IP (la del proxy).
 app.set('trust proxy', 1);
 
-app.use(express.json());
+// 5 MB: importar un respaldo del historial manda todas las constancias juntas.
+app.use(express.json({ limit: '5mb' }));
 
 // CORS restringido al origen del frontend (Vercel en producción,
 // localhost:5173 en desarrollo). Nada de "*": la API llegará a manejar
@@ -62,9 +63,12 @@ app.get('/health', async (_req, res) => {
   }
 });
 
-// Inicio de sesión. Los endpoints de negocio que se agreguen deben usar
-// requireAuth (de auth.js), p. ej. app.get('/constancias', requireAuth, ...).
+// Inicio de sesión.
 app.use('/auth', authRouter);
+
+// Historial y programas. datosRouter aplica requireAuth a todas sus rutas,
+// por eso va al final: cualquier ruta que no exista responde 401 sin sesión.
+app.use(datosRouter);
 
 app.listen(config.port, () => {
   console.log(`API escuchando en el puerto ${config.port}`);

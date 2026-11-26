@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
 import Toast from './components/Toast';
+import Icon from './components/atoms/Icon';
 import InicioView from './views/InicioView';
 import NuevaConstanciaView from './views/NuevaConstanciaView';
 import HistorialView from './views/HistorialView';
@@ -20,12 +21,18 @@ export default function App({ user, onLogout }) {
   const {
     historial,
     nextFolio,
+    cargando,
+    errorCarga,
+    recargar,
     registrarConstancia,
     anularConstancia,
     reactivarConstancia,
     registrarDescarga,
     importarHistorial,
   } = useHistorial();
+  // Evita registrar dos constancias si se da doble clic en "Generar"
+  // mientras la API todavía no responde.
+  const generando = useRef(false);
   const { programas } = useProgramas();
   const { calendario, guardarCalendario, pdfUrl: calendarioPdfUrl, subirPdf } = useCalendario();
   const { message, showToast } = useToast();
@@ -40,8 +47,29 @@ export default function App({ user, onLogout }) {
     setView(VISTA.HISTORIAL);
   }
 
+  /** Ejecuta una operación del historial y, si la API falla, lo avisa en vez de fallar en silencio. */
+  async function conAviso(operacion, mensaje) {
+    try {
+      await operacion();
+    } catch (error) {
+      console.error(mensaje, error);
+      showToast(`${mensaje} ${error.message}`);
+    }
+  }
+
   async function handleGenerate({ tipo, data }) {
-    const entry = registrarConstancia({ tipo, data });
+    if (generando.current) return;
+    generando.current = true;
+    let entry;
+    try {
+      entry = await registrarConstancia({ tipo, data });
+    } catch (error) {
+      console.error('No se pudo registrar la constancia:', error);
+      showToast(`No se generó la constancia: ${error.message}`);
+      return;
+    } finally {
+      generando.current = false;
+    }
     const folioSuffix = entry.folio.replace('FCI-', '');
     setPrefill(null);
     setView(VISTA.HISTORIAL);
@@ -70,12 +98,19 @@ export default function App({ user, onLogout }) {
     setView(TIPO_POR_VISTA[item.tipo] ?? VISTA.NUEVA_NORMAL);
   }
 
-  function handleImportar(entradas) {
+  async function handleImportar(entradas) {
     if (entradas.length === 0) {
       showToast('No se encontraron constancias válidas en ese archivo.');
       return;
     }
-    const agregadas = importarHistorial(entradas);
+    let agregadas;
+    try {
+      agregadas = await importarHistorial(entradas);
+    } catch (error) {
+      console.error('No se pudo importar el respaldo:', error);
+      showToast(`No se pudo importar el respaldo: ${error.message}`);
+      return;
+    }
     showToast(
       agregadas > 0
         ? `Se importaron ${agregadas} constancia(s) nueva(s).`
@@ -98,6 +133,20 @@ export default function App({ user, onLogout }) {
         />
         <main className="pt-16 min-h-screen">
           <div className="p-space-lg max-w-[1600px] mx-auto w-full">
+            {cargando && (
+              <div className="mb-space-md flex items-center gap-space-xs text-on-surface-variant text-label-md">
+                <Icon name="progress_activity" className="animate-spin text-[16px]" />
+                Cargando historial… (si el servidor estaba dormido puede tardar hasta un minuto)
+              </div>
+            )}
+            {errorCarga && (
+              <div className="mb-space-md flex items-center justify-between gap-space-sm rounded border border-error px-space-sm py-space-xs text-error text-label-md">
+                <span>No se pudo cargar el historial: {errorCarga}</span>
+                <button type="button" onClick={recargar} className="underline">
+                  Reintentar
+                </button>
+              </div>
+            )}
             {view === VISTA.INICIO && (
               <InicioView historial={historial} onVerHistorial={() => setView(VISTA.HISTORIAL)} />
             )}
@@ -107,9 +156,13 @@ export default function App({ user, onLogout }) {
                 query={historialQuery}
                 onQueryChange={setHistorialQuery}
                 onDuplicate={handleDuplicate}
-                onAnular={anularConstancia}
-                onReactivar={reactivarConstancia}
-                onRegistrarDescarga={registrarDescarga}
+                onAnular={(id) => conAviso(() => anularConstancia(id), 'No se pudo anular la constancia.')}
+                onReactivar={(id) =>
+                  conAviso(() => reactivarConstancia(id), 'No se pudo reactivar la constancia.')
+                }
+                onRegistrarDescarga={(id) =>
+                  conAviso(() => registrarDescarga(id), 'No se pudo registrar la descarga.')
+                }
                 onImportar={handleImportar}
               />
             )}

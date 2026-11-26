@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { loadJSON, saveJSON } from '../utils/storage';
 import { seedHistorial } from '../data/seedHistorial';
+import { apiFetch } from '../lib/api';
+import { USA_BASE_DE_DATOS } from '../lib/modo';
 
 const STORAGE_KEY = 'constancias-fci-historial-v1';
 
@@ -10,9 +12,9 @@ const FOLIO_RE = /^FCI-\d{4}-(\d+)$/;
 /**
  * Folio consecutivo (Regla F1): "FCI-<año actual>-<n>", compartido entre
  * tipos. El número sigue al más alto ya emitido y no se reinicia al cambiar
- * de año (FCI-2026-348 → FCI-2027-349), igual que la secuencia propuesta en
- * supabase/migrations. Se toma el máximo y no el tamaño del historial para
- * que importar respaldos no lo haga repetir ni brincar; las constancias de
+ * de año (FCI-2026-348 → FCI-2027-349), igual que la secuencia de la base
+ * de datos. Se toma el máximo y no el tamaño del historial para que
+ * importar respaldos no lo haga repetir ni brincar; las constancias de
  * ejemplo no cuentan.
  */
 export function siguienteFolio(historial, anio = new Date().getFullYear()) {
@@ -30,13 +32,120 @@ function withDefaults(entry) {
 }
 
 /**
- * Estado del historial de constancias generadas, respaldado en
- * localStorage (ver utils/storage.js). Expone el folio siguiente y
- * funciones para registrar, anular/reactivar, contar descargas, e
- * importar/reemplazar el historial completo (respaldo), para que los
- * componentes de UI no toquen el almacenamiento directamente.
+ * Orden por fecha de generación (más reciente primero) — así un respaldo
+ * importado con constancias más viejas no desordena "más recientes" en el
+ * historial ni en el panel de Inicio.
  */
-export function useHistorial() {
+function ordenar(historial) {
+  return [...historial].sort(
+    (a, b) =>
+      (b.fechaGeneracion || '').localeCompare(a.fechaGeneracion || '') ||
+      String(b.id).localeCompare(String(a.id)),
+  );
+}
+
+/**
+ * Historial en la base de datos, a través de la API. Es el modo real: el
+ * historial es el mismo en todos los equipos y el folio lo asigna la base
+ * (no se puede repetir aunque dos personas generen al mismo tiempo).
+ *
+ * Todas las operaciones son async y lanzan ApiError si la API falla; quien
+ * las llama decide cómo avisarlo (ver App.jsx).
+ */
+function useHistorialApi() {
+  const [historial, setHistorial] = useState([]);
+  const [nextFolio, setNextFolio] = useState('…');
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(null);
+
+  /** Pide el historial y lo aplica, salvo que el componente ya se haya desmontado. */
+  const cargar = useCallback(
+    (sigueVigente = () => true) =>
+      apiFetch('/constancias')
+        .then(({ constancias, siguienteFolio: siguiente }) => {
+          if (!sigueVigente()) return;
+          setHistorial(constancias);
+          setNextFolio(siguiente);
+          setErrorCarga(null);
+        })
+        .catch((error) => sigueVigente() && setErrorCarga(error.message))
+        .finally(() => sigueVigente() && setCargando(false)),
+    [],
+  );
+
+  useEffect(() => {
+    let vigente = true;
+    cargar(() => vigente);
+    return () => {
+      vigente = false;
+    };
+  }, [cargar]);
+
+  async function recargar() {
+    setCargando(true);
+    setErrorCarga(null);
+    await cargar();
+  }
+
+  function reemplazar(actualizada) {
+    setHistorial((prev) => prev.map((e) => (e.id === actualizada.id ? actualizada : e)));
+  }
+
+  async function registrarConstancia({ tipo, data }) {
+    const { constancia } = await apiFetch('/constancias', {
+      method: 'POST',
+      body: JSON.stringify({ tipo, data }),
+    });
+    setHistorial((prev) => [constancia, ...prev]);
+    // La secuencia de la base solo avanza, así que el que sigue es este + 1.
+    // Si otro equipo generó mientras tanto, la base asigna el correcto al generar.
+    setNextFolio(siguienteFolio([constancia]));
+    return constancia;
+  }
+
+  async function cambiarEstado(id, estado) {
+    const { constancia } = await apiFetch(`/constancias/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ estado }),
+    });
+    reemplazar(constancia);
+  }
+
+  async function registrarDescarga(id) {
+    const { constancia } = await apiFetch(`/constancias/${id}/descargas`, { method: 'POST' });
+    reemplazar(constancia);
+  }
+
+  async function importarHistorial(entradas) {
+    const { agregadas } = await apiFetch('/constancias/importar', {
+      method: 'POST',
+      body: JSON.stringify({ constancias: entradas }),
+    });
+    await recargar();
+    return agregadas;
+  }
+
+  return {
+    historial: ordenar(historial),
+    nextFolio,
+    cargando,
+    errorCarga,
+    recargar,
+    registrarConstancia,
+    anularConstancia: (id) => cambiarEstado(id, 'anulada'),
+    reactivarConstancia: (id) => cambiarEstado(id, 'vigente'),
+    registrarDescarga,
+    importarHistorial,
+  };
+}
+
+/**
+ * Historial en localStorage de este navegador. Solo para el modo de
+ * demostración (sin login real, ver lib/modo.js): cada equipo tiene el
+ * suyo y el folio se calcula aquí. Mismas funciones que useHistorialApi,
+ * también async, para que App.jsx no distinga entre los dos.
+ */
+function useHistorialLocal() {
   const [historial, setHistorial] = useState(() => {
     const stored = loadJSON(STORAGE_KEY);
     return (stored || seedHistorial()).map(withDefaults);
@@ -48,7 +157,7 @@ export function useHistorial() {
 
   const nextFolio = siguienteFolio(historial);
 
-  function registrarConstancia({ tipo, data }) {
+  async function registrarConstancia({ tipo, data }) {
     const entry = {
       id: `c-${Date.now()}`,
       folio: nextFolio,
@@ -63,47 +172,39 @@ export function useHistorial() {
     return entry;
   }
 
-  function anularConstancia(id) {
-    setHistorial((prev) => prev.map((e) => (e.id === id ? { ...e, estado: 'anulada' } : e)));
-  }
-
-  function reactivarConstancia(id) {
-    setHistorial((prev) => prev.map((e) => (e.id === id ? { ...e, estado: 'vigente' } : e)));
-  }
-
-  function registrarDescarga(id) {
-    setHistorial((prev) => prev.map((e) => (e.id === id ? { ...e, descargas: (e.descargas || 0) + 1 } : e)));
+  function actualizar(id, cambio) {
+    setHistorial((prev) => prev.map((e) => (e.id === id ? { ...e, ...cambio(e) } : e)));
   }
 
   /**
    * Importa un respaldo (ver utils/historialBackup.js): agrega las
    * entradas cuyo folio no exista ya, sin tocar las existentes.
    */
-  function importarHistorial(entradas) {
-    let agregadas = 0;
-    setHistorial((prev) => {
-      const foliosExistentes = new Set(prev.map((e) => e.folio));
-      const nuevas = entradas.map(withDefaults).filter((e) => !foliosExistentes.has(e.folio));
-      agregadas = nuevas.length;
-      return [...nuevas, ...prev];
-    });
-    return agregadas;
+  async function importarHistorial(entradas) {
+    const foliosExistentes = new Set(historial.map((e) => e.folio));
+    const nuevas = entradas.map(withDefaults).filter((e) => !foliosExistentes.has(e.folio));
+    setHistorial((prev) => [...nuevas, ...prev]);
+    return nuevas.length;
   }
 
-  // Orden por fecha de generación (más reciente primero) — así un respaldo
-  // importado con constancias más viejas no desordena "más recientes" en
-  // el historial ni en el panel de Inicio.
-  const historialOrdenado = [...historial].sort(
-    (a, b) => (b.fechaGeneracion || '').localeCompare(a.fechaGeneracion || '') || b.id.localeCompare(a.id),
-  );
-
   return {
-    historial: historialOrdenado,
+    historial: ordenar(historial),
     nextFolio,
+    cargando: false,
+    errorCarga: null,
+    recargar: async () => {},
     registrarConstancia,
-    anularConstancia,
-    reactivarConstancia,
-    registrarDescarga,
+    anularConstancia: async (id) => actualizar(id, () => ({ estado: 'anulada' })),
+    reactivarConstancia: async (id) => actualizar(id, () => ({ estado: 'vigente' })),
+    registrarDescarga: async (id) => actualizar(id, (e) => ({ descargas: (e.descargas || 0) + 1 })),
     importarHistorial,
   };
 }
+
+/**
+ * Estado del historial de constancias generadas. Con login real usa la
+ * base de datos (vía la API); en modo de demostración, localStorage. El
+ * modo se decide una sola vez al cargar la app, así que el orden de los
+ * hooks no cambia entre renders.
+ */
+export const useHistorial = USA_BASE_DE_DATOS ? useHistorialApi : useHistorialLocal;

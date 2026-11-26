@@ -66,6 +66,10 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
   2. `supabase/migrations/20260924000000_usuarios_autorizados.sql`
   3. `supabase/migrations/20261125000000_permisos_service_role.sql`
      (sin este, la API recibe "permission denied" en proyectos nuevos)
+  4. `supabase/migrations/20261125010000_funciones_api.sql`
+     (folio atómico, descargas e importación de respaldos)
+  5. `supabase/migrations/20261125020000_tipos_constancia.sql`
+     (permite buena conducta y terminación de estudios)
 - [ ] Guardar en Bitwarden, desde **Project Settings → API**:
   - **Project URL**
   - **service_role key** (secreta: nunca va en el frontend ni en Git)
@@ -106,7 +110,11 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
 
 - [ ] Entrar a render.com con la cuenta de GitHub de la organización.
 - [ ] New → **Blueprint** → elegir el repositorio. Render lee
-      `render.yaml` y crea el servicio en plan gratuito.
+      `render.yaml` y crea el servicio en plan gratuito, en Virginia (la
+      misma zona que Supabase `us-east-1`). Si se crea a mano como "Web
+      Service", usar esos mismos valores (Docker, root `api`, health check
+      `/health`) y **revisar que el plan sea Free**: Render preselecciona
+      uno de pago.
 - [ ] Capturar las variables de entorno:
 
   | Variable                    | Valor                          |
@@ -142,16 +150,22 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
   2. Revisar que llegue el código (y que no caiga en "Correo no deseado").
   3. Crear la contraseña y entrar.
 
-> En este punto el sistema ya está en internet con login real, pero **el
-> historial todavía se guarda en el navegador de cada equipo**. Para
-> compartirlo falta la Fase 8.
+> Con `VITE_AUTH_ENABLED=true` el historial y los programas se guardan en
+> la base de datos (ver Fase 8): es el mismo en todos los equipos.
 
 ## Fase 6 — Respaldos y mantener activo
 
 - [ ] En GitHub: repositorio → Settings → Secrets and variables → Actions →
-      crear el secret `SUPABASE_DB_URL` con la cadena de conexión de
-      Supabase (Project Settings → Database → Connection string → URI,
-      con la contraseña de la base).
+      crear dos secrets:
+  - `SUPABASE_DB_URL`: en Supabase, botón **Connect** → **Session pooler**
+    → copiar la URI y poner la contraseña de la base en lugar de
+    `[YOUR-PASSWORD]`. Tiene que ser la del *pooler*: la conexión directa
+    solo funciona por IPv6 y los servidores de GitHub no lo tienen.
+  - `RESPALDO_PASSPHRASE`: una frase larga inventada (guardarla en
+    Bitwarden). El repositorio es público y cualquiera con cuenta de
+    GitHub podría descargar el respaldo, por eso se sube cifrado; sin esta
+    frase no se puede abrir. Para restaurar:
+    `gpg --decrypt constancias-fci-AAAA-MM-DD.sql.gpg > respaldo.sql`.
 - [ ] En la pestaña **Actions**, ejecutar a mano "Respaldo de base de datos"
       y confirmar que termina bien.
 - [ ] Desde ahí corre solo cada domingo, guarda los respaldos 30 días y la
@@ -177,13 +191,17 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
 
 ## Fase 8 — Desarrollo pendiente antes de usar datos reales
 
-- [ ] Endpoints de la API para constancias y programas (protegidos con
-      `requireAuth`).
-- [ ] Cambiar `useHistorial` y `useProgramas` para usar la API en vez de
-      `localStorage`. Con esto el historial es compartido y el folio sale
-      de la secuencia de la base de datos (no se repite entre equipos).
-- [ ] Migrar lo ya generado: "Exportar respaldo" en el equipo actual →
-      "Importar respaldo" en el sistema nuevo.
+- [x] Endpoints de la API para constancias y programas (protegidos con
+      `requireAuth`, ver `api/src/constancias.js`).
+- [x] `useHistorial` y `useProgramas` usan la API cuando el login real está
+      activado. El historial es compartido y el folio sale de la secuencia
+      de la base de datos (no se repite entre equipos).
+- [ ] Migrar lo ya generado: "Exportar respaldo" en el equipo que se usaba
+      antes → "Importar respaldo" en el sistema nuevo. La importación salta
+      los folios que ya existan y las constancias de ejemplo, y adelanta el
+      folio para que el siguiente no choque.
+- [ ] Pendiente: el calendario escolar (fechas y PDF) todavía se guarda en
+      cada navegador.
 
 ## Fase 9 — Entrega a la Facultad
 

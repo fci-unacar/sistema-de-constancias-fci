@@ -25,20 +25,32 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
 
-      - name: Generar respaldo
+      # El repositorio es público y en un repositorio público cualquier
+      # usuario de GitHub puede descargar los artifacts. Por eso el respaldo
+      # (que trae datos de alumnos) se cifra con AES-256 antes de subirlo;
+      # sin la frase de RESPALDO_PASSPHRASE el archivo no sirve de nada.
+      #
+      # Para restaurar:
+      #   gpg --decrypt constancias-fci-AAAA-MM-DD.sql.gpg > respaldo.sql
+      - name: Generar respaldo cifrado
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          RESPALDO_PASSPHRASE: ${{ secrets.RESPALDO_PASSPHRASE }}
         run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "Falta el secret SUPABASE_DB_URL (Settings > Secrets and variables > Actions)."
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$RESPALDO_PASSPHRASE" ]; then
+            echo "Faltan los secrets SUPABASE_DB_URL y/o RESPALDO_PASSPHRASE (Settings > Secrets and variables > Actions)."
             exit 1
           fi
+          set -o pipefail
           mkdir -p respaldo
-          echo "FECHA=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
-          pg_dump "$SUPABASE_DB_URL" \
-            --no-owner \
-            --no-privileges \
-            --file "respaldo/constancias-fci-$(date -u +%Y-%m-%d).sql"
+          FECHA=$(date -u +%Y-%m-%d)
+          echo "FECHA=$FECHA" >> "$GITHUB_ENV"
+          # El SQL en claro nunca toca el disco: va directo de pg_dump a gpg.
+          pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges \
+            | gpg --batch --yes --pinentry-mode loopback --symmetric --cipher-algo AES256 \
+                  --passphrase-fd 3 3<<<"$RESPALDO_PASSPHRASE" \
+                  --output "respaldo/constancias-fci-$FECHA.sql.gpg"
+          ls -l respaldo/
 
       - name: Subir respaldo como artifact
         uses: actions/upload-artifact@v4
