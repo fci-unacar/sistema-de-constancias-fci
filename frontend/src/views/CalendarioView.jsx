@@ -31,7 +31,10 @@ function PdfViewer({ url }) {
 export default function CalendarioView({ calendario, onGuardar, pdfUrl, onSubirPdf, showToast }) {
   const [draft, setDraft] = useState(calendario);
   const [subiendo, setSubiendo] = useState(false);
-  const cambios = JSON.stringify(draft) !== JSON.stringify(calendario);
+  const [guardando, setGuardando] = useState(false);
+  // Solo cuentan las fechas: subir un PDF cambia pdfNombre/pdfSubido en el
+  // calendario y eso no debe marcar el formulario como "con cambios".
+  const cambios = JSON.stringify(draft.semestres) !== JSON.stringify(calendario.semestres);
   const completo = draft.semestres.every((s) => CAMPOS_SEMESTRE.every((c) => s[c]));
 
   function setSemestre(id, key) {
@@ -54,14 +57,18 @@ export default function CalendarioView({ calendario, onGuardar, pdfUrl, onSubirP
     showToast(
       ok
         ? 'Calendario guardado. Revisa que las fechas de los semestres coincidan con el PDF nuevo.'
-        : 'No se pudo guardar el PDF en este navegador.',
+        : 'No se pudo guardar el PDF. Revisa tu conexión e intenta de nuevo.',
     );
   }
 
-  function handleGuardar(e) {
+  async function handleGuardar(e) {
     e.preventDefault();
-    onGuardar({ ...draft, actualizado: new Date().toISOString() });
-    showToast('Fechas del calendario actualizadas.');
+    setGuardando(true);
+    const ok = await onGuardar({ ...draft, actualizado: new Date().toISOString() });
+    setGuardando(false);
+    showToast(
+      ok ? 'Fechas del calendario actualizadas.' : 'No se pudieron guardar las fechas. Intenta de nuevo.',
+    );
   }
 
   return (
@@ -121,11 +128,11 @@ export default function CalendarioView({ calendario, onGuardar, pdfUrl, onSubirP
 
         <button
           type="submit"
-          disabled={!cambios || !completo}
+          disabled={!cambios || !completo || guardando}
           className="flex h-11 items-center justify-center gap-space-xs rounded-lg bg-primary font-bold text-on-primary shadow-md transition-all hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Icon name="save" className="text-[18px]" />
-          Guardar fechas
+          {guardando ? 'Guardando…' : 'Guardar fechas'}
         </button>
         {calendario.actualizado && (
           <p className="text-center text-outline text-label-sm">

@@ -179,6 +179,10 @@ export default function App({ user, onLogout }) {
             )}
             {view === VISTA.CALENDARIO && (
               <CalendarioView
+                // El formulario copia el calendario al montarse; si llegan
+                // fechas nuevas de la base (al cargar o tras guardar), se
+                // vuelve a montar con ellas.
+                key={calendario.actualizado ?? 'inicial'}
                 calendario={calendario}
                 onGuardar={guardarCalendario}
                 pdfUrl={calendarioPdfUrl}

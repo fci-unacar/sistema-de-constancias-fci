@@ -1,8 +1,8 @@
 /**
- * Punto único para hablar con la API (servicio de Render). Hoy solo lo usa
- * el inicio de sesión (hooks/useAuth.js); los datos todavía persisten en
- * localStorage (ver utils/storage.js) hasta que se migren a la base de
- * datos. La URL sale de una variable de entorno, no del código.
+ * Punto único para hablar con la API (servicio de Render): inicio de
+ * sesión (hooks/useAuth.js) y, con login real, el historial, los programas
+ * y el calendario (ver lib/modo.js). La URL sale de una variable de
+ * entorno, no del código.
  *
  * VITE_API_URL se define en Vercel (producción) y en frontend/.env.local
  * (desarrollo). Ver frontend/.env.example.
@@ -36,8 +36,26 @@ export class ApiError extends Error {
 /**
  * fetch con JSON y manejo de error uniforme. Si hay sesión, manda el
  * access token; el mensaje de error es el que devolvió la API, si lo hay.
+ * Para mandar un archivo, pasa el File/Blob como body y su Content-Type
+ * en options.headers.
  */
 export async function apiFetch(path, options = {}) {
+  const response = await peticion(path, options);
+  return response.status === 204 ? null : response.json();
+}
+
+/** Como apiFetch, pero para descargar un archivo: devuelve el Blob, o null si no existe (404). */
+export async function apiFetchArchivo(path) {
+  try {
+    const response = await peticion(path);
+    return await response.blob();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+async function peticion(path, options = {}) {
   const session = loadSession();
   let response;
   try {
@@ -56,5 +74,5 @@ export async function apiFetch(path, options = {}) {
     const body = await response.json().catch(() => null);
     throw new ApiError(body?.error ?? `La API respondió ${response.status} en ${path}`, response.status);
   }
-  return response.status === 204 ? null : response.json();
+  return response;
 }

@@ -70,6 +70,8 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
      (folio atómico, descargas e importación de respaldos)
   5. `supabase/migrations/20261125020000_tipos_constancia.sql`
      (permite buena conducta y terminación de estudios)
+  6. `supabase/migrations/20261125030000_calendario.sql`
+     (calendario escolar compartido y bucket privado para su PDF)
 - [ ] Guardar en Bitwarden, desde **Project Settings → API**:
   - **Project URL**
   - **service_role key** (secreta: nunca va en el frontend ni en Git)
@@ -200,8 +202,9 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
       antes → "Importar respaldo" en el sistema nuevo. La importación salta
       los folios que ya existan y las constancias de ejemplo, y adelanta el
       folio para que el siguiente no choque.
-- [ ] Pendiente: el calendario escolar (fechas y PDF) todavía se guarda en
-      cada navegador.
+- [x] El calendario escolar (fechas y PDF oficial) también vive en la base
+      de datos: tabla `configuracion` y bucket privado `archivos` de
+      Storage (ver `api/src/calendario.js`).
 
 ## Fase 9 — Entrega a la Facultad
 

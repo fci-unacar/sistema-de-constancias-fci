@@ -14,6 +14,7 @@ import { config, supabaseConfigurado } from './config.js';
 import { getSupabase } from './supabase.js';
 import { authRouter } from './auth.js';
 import { datosRouter } from './constancias.js';
+import { calendarioRouter } from './calendario.js';
 
 const app = express();
 
@@ -66,8 +67,10 @@ app.get('/health', async (_req, res) => {
 // Inicio de sesión.
 app.use('/auth', authRouter);
 
-// Historial y programas. datosRouter aplica requireAuth a todas sus rutas,
-// por eso va al final: cualquier ruta que no exista responde 401 sin sesión.
+// Calendario escolar (fechas y PDF), historial y programas. Los routers
+// aplican requireAuth a todas sus rutas, por eso van al final: cualquier
+// ruta que no exista responde 401 sin sesión.
+app.use('/calendario', calendarioRouter);
 app.use(datosRouter);
 
 app.listen(config.port, () => {
