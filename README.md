@@ -30,7 +30,7 @@ esa llave ni habla con Supabase directamente.
        v
 +------------------+         +------------------+        +------------------+
 |  frontend/       |  fetch  |  api/            |   pg   |  Supabase        |
-|  React 19 + Vite | ------> |  Node 20+Express | -----> |  PostgreSQL      |
+|  React 19 + Vite | ------> |  Node 22+Express | -----> |  PostgreSQL      |
 |                  |         |                  |        |                  |
 |  Vercel          |         |  Render (Docker) |        |  RLS activo,     |
 |  VITE_API_URL    |         | SERVICE_ROLE_KEY |        |  sin políticas   |
@@ -180,7 +180,7 @@ cualquier cuenta puede hacer todo.
 
 ## Poner a correr el proyecto
 
-Requiere Node 20+.
+Requiere Node 22+.
 
 ### Frontend
 
