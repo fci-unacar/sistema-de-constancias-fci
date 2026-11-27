@@ -1,0 +1,42 @@
+name: Mantener base de datos activa
+
+# Supabase (plan gratuito) pausa el proyecto tras 7 días sin actividad y
+# hay que reactivarlo a mano desde el panel. El ping de la API
+# (mantener-api.yml) solo corre en días hábiles y depende de que Render
+# responda, así que en vacaciones o si la API falla la base podría
+# pausarse. Esta tarea consulta la base directamente, una vez al día, todos
+# los días, sin pasar por la API.
+#
+# Usa el mismo secret que el respaldo (SUPABASE_DB_URL). psql ya viene
+# instalado en los runners ubuntu-latest de GitHub.
+#
+# Horario: todos los días a las 12:00 UTC (6:00 en Campeche, UTC-6).
+on:
+  schedule:
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+jobs:
+  consulta:
+    name: Consultar Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Hacer una consulta a la base
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Falta el secret SUPABASE_DB_URL (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          # Consulta de solo lectura sobre una tabla real; no modifica nada.
+          for intento in 1 2 3; do
+            if psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -At \
+                 -c "select now(), (select count(*) from public.programas) as programas;"; then
+              exit 0
+            fi
+            echo "Intento $intento falló; reintentando en 20 s..."
+            sleep 20
+          done
+          exit 1
