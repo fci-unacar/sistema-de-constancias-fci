@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Icon from '../../components/atoms/Icon';
-import { inputClass } from '../../components/auth/PasswordInput';
+import { inputAlumno } from './estilos';
 import logoUnacar from '../../assets/logo-unacar.png';
 import logoFci from '../../assets/logo-fci.png';
 
@@ -97,7 +97,7 @@ export default function AlumnoLoginView({
                 autoComplete="email"
                 required
                 autoFocus
-                className={inputClass}
+                className={inputAlumno}
                 placeholder="alumno@mail.unacar.mx"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -129,7 +129,7 @@ export default function AlumnoLoginView({
                 required
                 autoFocus
                 maxLength={10}
-                className={`${inputClass} tracking-[0.3em]`}
+                className={`${inputAlumno} tracking-[0.3em]`}
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ''))}
               />

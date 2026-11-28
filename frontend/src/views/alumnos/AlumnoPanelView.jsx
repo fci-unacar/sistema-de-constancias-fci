@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Icon from '../../components/atoms/Icon';
-import { inputClass } from '../../components/auth/PasswordInput';
+import { inputAlumno } from './estilos';
 import logoUnacar from '../../assets/logo-unacar.png';
 import logoFci from '../../assets/logo-fci.png';
 import { useMisSolicitudes } from '../../hooks/useMisSolicitudes';
@@ -36,9 +36,9 @@ function textoDeEstado(s) {
 function Campo({ label, children, ayuda }) {
   return (
     <label className="flex flex-col gap-space-2xs">
-      <span className="font-bold text-label-md">{label}</span>
+      <span className="font-bold text-body-md">{label}</span>
       {children}
-      {ayuda && <span className="text-outline text-label-sm">{ayuda}</span>}
+      {ayuda && <span className="text-outline text-label-md">{ayuda}</span>}
     </label>
   );
 }
@@ -56,6 +56,7 @@ export default function AlumnoPanelView({ user, onLogout }) {
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const inputArchivo = useRef(null);
+  const listaRef = useRef(null);
   const precargado = useRef(false);
 
   // Precarga nombre, matrícula y programa de la última solicitud, para no
@@ -96,10 +97,12 @@ export default function AlumnoPanelView({ user, onLogout }) {
     setEnviando(true);
     try {
       await enviarSolicitud({ ...form, voucher, voucherTipo: tipoDeVoucher(voucher) });
-      setExito('Tu solicitud se envió. Aquí abajo puedes ver su estado.');
+      setExito('Tu solicitud se envió. Puedes ver su estado en "Mis solicitudes".');
       setForm((prev) => ({ ...prev, tipo: '' }));
       setVoucher(null);
       if (inputArchivo.current) inputArchivo.current.value = '';
+      // En el celular la lista queda arriba del formulario: llevar al alumno a ver su solicitud nueva.
+      listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -110,28 +113,24 @@ export default function AlumnoPanelView({ user, onLogout }) {
   return (
     <div className="min-h-screen bg-background font-sans text-on-surface antialiased">
       <header className="bg-primary text-on-primary shadow-md">
-        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-space-sm px-space-md py-space-sm">
-          <div className="flex items-center gap-space-sm">
-            <div className="flex items-center gap-space-xs rounded-lg bg-surface-container-lowest p-space-2xs">
-              <img src={logoUnacar} alt="UNACAR" className="h-8 w-auto" />
-              <img src={logoFci} alt="FCI" className="h-8 w-auto" />
+        <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-space-sm px-space-md py-space-sm">
+          <div className="flex min-w-0 items-center gap-space-sm">
+            <div className="flex shrink-0 items-center gap-space-2xs rounded-lg bg-surface-container-lowest p-space-2xs sm:gap-space-xs">
+              <img src={logoUnacar} alt="UNACAR" className="h-7 w-auto sm:h-8" />
+              <img src={logoFci} alt="FCI" className="h-7 w-auto sm:h-8" />
             </div>
-            <div className="flex flex-col leading-tight">
-              <span className="font-semibold text-body-md">Solicitud de Constancias</span>
-              <span className="text-on-primary-container text-label-sm">Portal de alumnos · FCI</span>
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate font-semibold text-body-md">Solicitud de Constancias</span>
+              <span className="truncate text-on-primary-container text-label-sm" title={user?.email}>
+                {user?.email}
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-space-sm">
-            <span
-              className="max-w-[220px] truncate text-on-primary-container text-label-sm"
-              title={user?.email}
-            >
-              {user?.email}
-            </span>
+          <div className="flex shrink-0 items-center">
             <button
               type="button"
               onClick={onLogout}
-              className="flex items-center gap-space-2xs rounded px-space-sm py-space-2xs text-on-primary-container text-label-md transition-colors hover:bg-white/10 hover:text-on-primary"
+              className="flex h-10 items-center gap-space-2xs rounded px-space-sm text-on-primary-container text-label-md transition-colors hover:bg-white/10 hover:text-on-primary"
             >
               <Icon name="logout" className="text-[18px]" />
               Salir
@@ -140,11 +139,11 @@ export default function AlumnoPanelView({ user, onLogout }) {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-[1100px] grid-cols-1 items-start gap-space-lg px-space-md py-space-lg lg:grid-cols-12">
-        <section className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-lg shadow-sm lg:col-span-5">
+      <main className="mx-auto grid max-w-[1100px] grid-cols-1 items-start gap-space-lg px-space-md py-space-md sm:py-space-lg lg:grid-cols-12">
+        <section className="flex flex-col gap-space-md rounded-xl bg-surface-container-lowest p-space-md shadow-sm sm:p-space-lg lg:col-span-5">
           <div className="flex flex-col gap-space-2xs">
             <h2 className="font-semibold text-primary text-title-md">Nueva solicitud</h2>
-            <p className="text-on-surface-variant text-label-md">
+            <p className="text-on-surface-variant text-body-sm">
               Llena tus datos tal como deben aparecer en la constancia y adjunta tu voucher de pago.
             </p>
           </div>
@@ -155,7 +154,7 @@ export default function AlumnoPanelView({ user, onLogout }) {
                 required
                 maxLength={200}
                 autoComplete="name"
-                className={inputClass}
+                className={inputAlumno}
                 placeholder="Ej. Juan Pérez López"
                 value={form.nombre}
                 onChange={cambiar('nombre')}
@@ -169,7 +168,7 @@ export default function AlumnoPanelView({ user, onLogout }) {
                 inputMode="numeric"
                 pattern="[A-Za-z0-9]+"
                 title="Solo letras y números"
-                className={inputClass}
+                className={inputAlumno}
                 placeholder="Ej. 000000"
                 value={form.matricula}
                 onChange={cambiar('matricula')}
@@ -177,7 +176,7 @@ export default function AlumnoPanelView({ user, onLogout }) {
             </Campo>
 
             <Campo label="Programa educativo">
-              <select required className={inputClass} value={form.programa} onChange={cambiar('programa')}>
+              <select required className={inputAlumno} value={form.programa} onChange={cambiar('programa')}>
                 <option value="" disabled>
                   Elige tu programa
                 </option>
@@ -190,7 +189,7 @@ export default function AlumnoPanelView({ user, onLogout }) {
             </Campo>
 
             <Campo label="Tipo de constancia">
-              <select required className={inputClass} value={form.tipo} onChange={cambiar('tipo')}>
+              <select required className={inputAlumno} value={form.tipo} onChange={cambiar('tipo')}>
                 <option value="" disabled>
                   Elige el tipo de constancia
                 </option>
@@ -202,25 +201,48 @@ export default function AlumnoPanelView({ user, onLogout }) {
               </select>
             </Campo>
 
-            <Campo label="Voucher de pago" ayuda="PDF o foto (JPG o PNG), máximo 5 MB.">
-              <input
-                ref={inputArchivo}
-                type="file"
-                required
-                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                onChange={elegirArchivo}
-                className="block w-full text-on-surface-variant text-label-md file:mr-space-sm file:rounded-lg file:border-0 file:bg-surface-container-high file:px-space-sm file:py-space-xs file:font-bold file:text-primary hover:file:bg-surface-container-highest"
-              />
-            </Campo>
+            <div className="flex flex-col gap-space-2xs">
+              <span className="font-bold text-body-md">Voucher de pago</span>
+              <label
+                className={`flex min-h-[56px] cursor-pointer items-center gap-space-sm rounded-lg border-2 border-dashed px-space-sm py-space-xs transition-colors focus-within:ring-2 focus-within:ring-secondary ${
+                  voucher
+                    ? 'border-secondary bg-secondary-fixed/40 text-on-surface'
+                    : 'border-outline-variant bg-surface-container-low text-on-surface-variant hover:border-secondary'
+                }`}
+              >
+                {/* Sin "required": el navegador no puede mostrar su aviso en un campo oculto; enviar() lo valida. */}
+                <input
+                  ref={inputArchivo}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                  onChange={elegirArchivo}
+                  className="sr-only"
+                />
+                <Icon
+                  name={voucher ? 'check_circle' : 'add_a_photo'}
+                  className={`shrink-0 text-[24px] ${voucher ? 'text-secondary' : 'text-primary'}`}
+                />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate font-bold text-body-md">
+                    {voucher ? voucher.name : 'Tomar foto o elegir archivo'}
+                  </span>
+                  <span className="text-outline text-label-md">
+                    {voucher
+                      ? `${(voucher.size / 1024 / 1024).toFixed(1)} MB · toca para cambiarlo`
+                      : 'PDF o foto (JPG o PNG), máximo 5 MB.'}
+                  </span>
+                </span>
+              </label>
+            </div>
 
             {error && (
-              <p role="alert" className="flex items-start gap-space-2xs text-error text-label-md">
+              <p role="alert" className="flex items-start gap-space-2xs text-error text-body-sm">
                 <Icon name="error" className="mt-0.5 text-[16px]" />
                 {error}
               </p>
             )}
             {exito && (
-              <p role="status" className="flex items-start gap-space-2xs text-secondary text-label-md">
+              <p role="status" className="flex items-start gap-space-2xs text-secondary text-body-sm">
                 <Icon name="check_circle" className="mt-0.5 text-[16px]" />
                 {exito}
               </p>
@@ -229,7 +251,7 @@ export default function AlumnoPanelView({ user, onLogout }) {
             <button
               type="submit"
               disabled={enviando}
-              className="flex h-11 items-center justify-center gap-space-xs rounded-lg bg-primary font-bold text-on-primary shadow-md transition-all hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-12 items-center justify-center gap-space-xs rounded-lg bg-primary font-bold text-on-primary text-body-md shadow-md transition-all hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Icon name="send" className="text-[18px]" />
               {enviando ? 'Enviando…' : 'Enviar solicitud'}
@@ -237,14 +259,17 @@ export default function AlumnoPanelView({ user, onLogout }) {
           </form>
         </section>
 
-        <section className="flex flex-col gap-space-md lg:col-span-7">
+        <section
+          ref={listaRef}
+          className={`flex scroll-mt-space-md flex-col gap-space-md lg:order-none lg:col-span-7 ${solicitudes.length > 0 ? 'order-first' : ''}`}
+        >
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-primary text-title-md">Mis solicitudes</h2>
             <button
               type="button"
               onClick={recargar}
               disabled={cargando}
-              className="flex items-center gap-space-2xs rounded border border-outline-variant px-space-sm py-space-2xs text-on-surface-variant text-label-md hover:bg-surface-container-low disabled:opacity-40"
+              className="flex h-10 items-center gap-space-2xs rounded border border-outline-variant px-space-sm text-on-surface-variant text-label-md hover:bg-surface-container-low disabled:opacity-40"
             >
               <Icon name="refresh" className={`text-[16px] ${cargando ? 'animate-spin' : ''}`} />
               Actualizar
@@ -286,14 +311,14 @@ export default function AlumnoPanelView({ user, onLogout }) {
                     {ESTADO_SOLICITUD_LABEL[s.estado]}
                   </span>
                 </div>
-                <div className="text-on-surface-variant text-label-md">
+                <div className="text-on-surface-variant text-body-sm">
                   {s.nombre} · {s.matricula} · {s.programa}
                 </div>
-                <div className="text-outline text-label-sm">
+                <div className="text-outline text-label-md [overflow-wrap:anywhere]">
                   Enviada el {fechaHoraCorta(s.creadoEn)} · Voucher: {s.voucherNombre}
                 </div>
                 <p
-                  className={`text-label-md ${s.estado === ESTADO_SOLICITUD.RECHAZADA ? 'text-error' : 'text-on-surface'}`}
+                  className={`text-body-sm ${s.estado === ESTADO_SOLICITUD.RECHAZADA ? 'text-error' : 'text-on-surface'}`}
                 >
                   {textoDeEstado(s)}
                 </p>
