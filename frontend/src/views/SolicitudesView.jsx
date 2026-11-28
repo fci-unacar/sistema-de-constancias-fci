@@ -4,10 +4,15 @@ import VoucherModal from '../components/solicitudes/VoucherModal';
 import RechazoModal from '../components/solicitudes/RechazoModal';
 import { TIPO_BADGE_CLASS, TIPO_LABEL } from '../constants/tipos';
 import {
+  DIAS_ATRASO,
   ESTADO_SOLICITUD,
   ESTADO_SOLICITUD_CLASS,
   ESTADO_SOLICITUD_LABEL,
+  NIVEL_ATRASO,
+  NIVEL_ATRASO_CLASS,
   fechaHoraCorta,
+  haceCuanto,
+  nivelAtraso,
 } from '../constants/solicitudes';
 
 const FILTROS = [
@@ -24,8 +29,10 @@ const botonFila =
 
 /**
  * Bandeja de solicitudes de los alumnos. Desde aquí Secretaría ve el
- * voucher, genera la constancia (abre el formulario con los datos del
- * alumno; al generar, la solicitud queda como "lista") o la rechaza.
+ * voucher, genera la constancia (la toma a su nombre y abre el formulario
+ * con los datos del alumno; al generar, la solicitud queda como "lista") o
+ * la rechaza. Cada pendiente muestra cuánto lleva esperando, en amarillo
+ * desde 1 día hábil y en rojo desde DIAS_ATRASO.
  */
 export default function SolicitudesView({
   solicitudes,
@@ -33,7 +40,9 @@ export default function SolicitudesView({
   errorCarga,
   disponible,
   onRecargar,
+  usuarioEmail,
   onAtender,
+  onSoltar,
   onRechazar,
   onRegresarAPendiente,
   onDescargarVoucher,
@@ -69,6 +78,9 @@ export default function SolicitudesView({
         )
     );
   }, [solicitudes, filtro, query]);
+
+  const ahora = new Date();
+  const atrasadas = solicitudes.filter((s) => nivelAtraso(s, ahora) === NIVEL_ATRASO.ATRASADA).length;
 
   if (!disponible) {
     return (
@@ -123,6 +135,16 @@ export default function SolicitudesView({
         </p>
       )}
 
+      {atrasadas > 0 && (
+        <p className="flex items-center gap-space-xs rounded-lg bg-error-container px-space-sm py-space-xs font-semibold text-on-error-container text-label-md">
+          <Icon name="schedule" className="text-[18px]" />
+          {atrasadas === 1
+            ? `1 solicitud lleva ${DIAS_ATRASO} días hábiles o más sin atenderse.`
+            : `${atrasadas} solicitudes llevan ${DIAS_ATRASO} días hábiles o más sin atenderse.`}{' '}
+          Están primero en la lista de pendientes.
+        </p>
+      )}
+
       <div className="overflow-x-auto rounded-xl bg-surface-container-lowest shadow-sm">
         {visibles.length === 0 ? (
           <div className="py-space-2xl text-center text-outline text-body-sm">
@@ -141,81 +163,114 @@ export default function SolicitudesView({
               </tr>
             </thead>
             <tbody>
-              {visibles.map((s) => (
-                <tr key={s.id} className="border-t border-outline-variant/40 hover:bg-surface-container-low">
-                  <td className={`${td} whitespace-nowrap text-on-surface-variant`}>
-                    {fechaHoraCorta(s.creadoEn)}
-                  </td>
-                  <td className={td}>
-                    <div className="font-semibold text-on-surface">{s.nombre}</div>
-                    <div className="font-mono text-on-surface-variant text-label-sm">{s.matricula}</div>
-                    <div className="text-outline text-label-sm">{s.alumnoEmail}</div>
-                  </td>
-                  <td className={`${td} text-on-surface-variant`}>{s.programa}</td>
-                  <td className={td}>
-                    <span
-                      className={`whitespace-nowrap rounded-full px-space-xs py-space-2xs font-bold uppercase tracking-wide text-label-sm ${TIPO_BADGE_CLASS[s.tipo]}`}
-                    >
-                      {TIPO_LABEL[s.tipo]}
-                    </span>
-                  </td>
-                  <td className={td}>
-                    <span
-                      className={`rounded-full px-space-xs py-space-2xs font-bold uppercase tracking-wide text-label-sm ${ESTADO_SOLICITUD_CLASS[s.estado]}`}
-                    >
-                      {ESTADO_SOLICITUD_LABEL[s.estado]}
-                    </span>
-                    {s.estado === ESTADO_SOLICITUD.LISTA && s.folio && (
-                      <div className="mt-space-2xs font-mono text-on-surface-variant text-label-sm">
-                        {s.folio}
-                      </div>
-                    )}
-                    {s.estado === ESTADO_SOLICITUD.RECHAZADA && s.motivoRechazo && (
-                      <div className="mt-space-2xs max-w-[220px] text-error text-label-sm">
-                        {s.motivoRechazo}
-                      </div>
-                    )}
-                  </td>
-                  <td className={td}>
-                    <div className="flex flex-wrap justify-end gap-space-2xs">
-                      <button type="button" onClick={() => setVoucherDe(s)} className={botonFila}>
-                        <Icon name="receipt_long" className="text-[16px]" />
-                        Voucher
-                      </button>
-                      {s.estado === ESTADO_SOLICITUD.PENDIENTE && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => onAtender(s)}
-                            className="flex items-center gap-space-2xs whitespace-nowrap rounded bg-primary px-space-sm py-space-2xs font-bold text-on-primary text-label-md hover:bg-primary-container"
+              {visibles.map((s) => {
+                const nivel = nivelAtraso(s, ahora);
+                const tomadaPorMi = Boolean(s.tomadaPor) && s.tomadaPor === usuarioEmail;
+                const tomadaPorOtra = Boolean(s.tomadaPor) && !tomadaPorMi;
+                return (
+                  <tr
+                    key={s.id}
+                    className="border-t border-outline-variant/40 hover:bg-surface-container-low"
+                  >
+                    <td className={`${td} whitespace-nowrap text-on-surface-variant`}>
+                      {fechaHoraCorta(s.creadoEn)}
+                      {nivel && (
+                        <div className="mt-space-2xs">
+                          <span
+                            className={`rounded-full px-space-xs py-space-2xs font-bold text-label-sm ${NIVEL_ATRASO_CLASS[nivel]}`}
                           >
-                            <Icon name="note_add" className="text-[16px]" />
-                            Generar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setRechazando(s)}
-                            className={`${botonFila} hover:border-error hover:text-error`}
-                          >
-                            <Icon name="block" className="text-[16px]" />
-                            Rechazar
-                          </button>
-                        </>
+                            {haceCuanto(s.creadoEn, ahora)}
+                          </span>
+                        </div>
                       )}
-                      {s.estado === ESTADO_SOLICITUD.RECHAZADA && (
-                        <button
-                          type="button"
-                          onClick={() => onRegresarAPendiente(s.id)}
-                          className={botonFila}
-                        >
-                          <Icon name="undo" className="text-[16px]" />
-                          Regresar a pendientes
+                    </td>
+                    <td className={td}>
+                      <div className="font-semibold text-on-surface">{s.nombre}</div>
+                      <div className="font-mono text-on-surface-variant text-label-sm">{s.matricula}</div>
+                      <div className="text-outline text-label-sm">{s.alumnoEmail}</div>
+                    </td>
+                    <td className={`${td} text-on-surface-variant`}>{s.programa}</td>
+                    <td className={td}>
+                      <span
+                        className={`whitespace-nowrap rounded-full px-space-xs py-space-2xs font-bold uppercase tracking-wide text-label-sm ${TIPO_BADGE_CLASS[s.tipo]}`}
+                      >
+                        {TIPO_LABEL[s.tipo]}
+                      </span>
+                    </td>
+                    <td className={td}>
+                      <span
+                        className={`rounded-full px-space-xs py-space-2xs font-bold uppercase tracking-wide text-label-sm ${ESTADO_SOLICITUD_CLASS[s.estado]}`}
+                      >
+                        {ESTADO_SOLICITUD_LABEL[s.estado]}
+                      </span>
+                      {s.estado === ESTADO_SOLICITUD.LISTA && s.folio && (
+                        <div className="mt-space-2xs font-mono text-on-surface-variant text-label-sm">
+                          {s.folio}
+                        </div>
+                      )}
+                      {s.estado === ESTADO_SOLICITUD.RECHAZADA && s.motivoRechazo && (
+                        <div className="mt-space-2xs max-w-[220px] text-error text-label-sm">
+                          {s.motivoRechazo}
+                        </div>
+                      )}
+                      {s.tomadaPor && (
+                        <div className="mt-space-2xs flex max-w-[220px] items-center gap-space-2xs text-secondary text-label-sm">
+                          <Icon name="person" className="text-[14px]" />
+                          {tomadaPorMi ? 'La estás atendiendo tú' : `La atiende ${s.tomadaPor}`}
+                        </div>
+                      )}
+                    </td>
+                    <td className={td}>
+                      <div className="flex flex-wrap justify-end gap-space-2xs">
+                        <button type="button" onClick={() => setVoucherDe(s)} className={botonFila}>
+                          <Icon name="receipt_long" className="text-[16px]" />
+                          Voucher
                         </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {s.estado === ESTADO_SOLICITUD.PENDIENTE && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => onAtender(s)}
+                              disabled={tomadaPorOtra}
+                              title={tomadaPorOtra ? `La está atendiendo ${s.tomadaPor}` : undefined}
+                              className="flex items-center gap-space-2xs whitespace-nowrap rounded bg-primary px-space-sm py-space-2xs font-bold text-on-primary text-label-md hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <Icon name="note_add" className="text-[16px]" />
+                              {tomadaPorMi ? 'Continuar' : 'Generar'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRechazando(s)}
+                              disabled={tomadaPorOtra}
+                              title={tomadaPorOtra ? `La está atendiendo ${s.tomadaPor}` : undefined}
+                              className={`${botonFila} hover:border-error hover:text-error disabled:cursor-not-allowed disabled:opacity-40`}
+                            >
+                              <Icon name="block" className="text-[16px]" />
+                              Rechazar
+                            </button>
+                            {tomadaPorMi && (
+                              <button type="button" onClick={() => onSoltar(s.id)} className={botonFila}>
+                                <Icon name="logout" className="text-[16px]" />
+                                Soltar
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {s.estado === ESTADO_SOLICITUD.RECHAZADA && (
+                          <button
+                            type="button"
+                            onClick={() => onRegresarAPendiente(s.id)}
+                            className={botonFila}
+                          >
+                            <Icon name="undo" className="text-[16px]" />
+                            Regresar a pendientes
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

@@ -45,9 +45,19 @@ export default function App({ user, onLogout }) {
   const solicitudesAlumnos = useSolicitudes();
   const { message, showToast } = useToast();
 
+  /** Deja libre la solicitud que se estaba atendiendo, para que otra persona pueda tomarla. */
+  function soltarSolicitudEnCurso() {
+    if (!solicitudEnCurso) return;
+    solicitudesAlumnos
+      .soltar(solicitudEnCurso.id)
+      // Si falla, la toma vence sola a la hora.
+      .catch((error) => console.warn('No se pudo soltar la solicitud:', error.message));
+    setSolicitudEnCurso(null);
+  }
+
   function changeView(nextView) {
     setPrefill(null);
-    setSolicitudEnCurso(null);
+    soltarSolicitudEnCurso();
     setView(nextView);
     if (nextView === VISTA.SOLICITUDES) solicitudesAlumnos.recargar();
   }
@@ -74,6 +84,21 @@ export default function App({ user, onLogout }) {
     // Secretaria, esta constancia se sigue reimprimiendo con su firma original.
     const { secretaria, director, ccpIniciales } = firmantes;
     const data = { ...datosFormulario, firmantes: { secretaria, director, ccpIniciales } };
+    // Antes de gastar un folio, confirmar que la solicitud sigue siendo de
+    // quien la atiende (la toma renueva su hora). Si otra persona la tomó o
+    // ya la atendieron, no se genera nada.
+    if (solicitudEnCurso) {
+      try {
+        await solicitudesAlumnos.tomar(solicitudEnCurso.id);
+      } catch (error) {
+        generando.current = false;
+        setPrefill(null);
+        setSolicitudEnCurso(null);
+        setView(VISTA.SOLICITUDES);
+        showToast(`No se generó la constancia: ${error.message}`);
+        return;
+      }
+    }
     let entry;
     try {
       entry = await registrarConstancia({ tipo, data });
@@ -122,16 +147,24 @@ export default function App({ user, onLogout }) {
     if (data.fechaExpedicion) data.fechaExpedicion = todayStr();
     if (data.fechaConsulta) data.fechaConsulta = todayStr();
     setPrefill({ tipo: item.tipo, data });
-    setSolicitudEnCurso(null);
+    soltarSolicitudEnCurso();
     setView(VISTA_POR_TIPO[item.tipo] ?? VISTA.NUEVA_NORMAL);
   }
 
   /**
-   * "Generar" desde la bandeja de solicitudes: abre el formulario del tipo
-   * pedido con los datos que capturó el alumno. Las fechas del semestre y
-   * la de expedición se llenan igual que en una constancia nueva.
+   * "Generar" desde la bandeja de solicitudes: la toma a nombre de quien la
+   * atiende (si otra persona ya la tiene, avisa y no abre nada) y abre el
+   * formulario del tipo pedido con los datos que capturó el alumno. Las
+   * fechas del semestre y la de expedición se llenan igual que en una
+   * constancia nueva.
    */
-  function handleAtenderSolicitud(solicitud) {
+  async function handleAtenderSolicitud(solicitud) {
+    try {
+      await solicitudesAlumnos.tomar(solicitud.id);
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
     const { tipo, nombre, matricula, programa } = solicitud;
     setPrefill({ tipo, data: { alumno: nombre, matricula, programa } });
     setSolicitudEnCurso(solicitud);
@@ -194,7 +227,13 @@ export default function App({ user, onLogout }) {
               </div>
             )}
             {view === VISTA.INICIO && (
-              <InicioView historial={historial} onVerHistorial={() => setView(VISTA.HISTORIAL)} />
+              <InicioView
+                historial={historial}
+                onVerHistorial={() => setView(VISTA.HISTORIAL)}
+                solicitudesPendientes={solicitudesAlumnos.pendientes}
+                solicitudesAtrasadas={solicitudesAlumnos.atrasadas}
+                onVerSolicitudes={() => changeView(VISTA.SOLICITUDES)}
+              />
             )}
             {view === VISTA.HISTORIAL && (
               <HistorialView
@@ -218,8 +257,8 @@ export default function App({ user, onLogout }) {
                   <Icon name="inbox" className="text-[18px]" />
                   <span>
                     Atendiendo la solicitud de <strong>{solicitudEnCurso.nombre}</strong> (
-                    {solicitudEnCurso.matricula}). Revisa y completa los datos; al generar, la solicitud
-                    quedará como lista.
+                    {solicitudEnCurso.matricula}). Está apartada a tu nombre: nadie más puede atenderla
+                    mientras tanto. Al generar, quedará como lista.
                   </span>
                 </span>
                 <button type="button" onClick={() => changeView(VISTA.SOLICITUDES)} className="underline">
@@ -246,7 +285,11 @@ export default function App({ user, onLogout }) {
                 errorCarga={solicitudesAlumnos.errorCarga}
                 disponible={solicitudesAlumnos.disponible}
                 onRecargar={solicitudesAlumnos.recargar}
+                usuarioEmail={user?.email}
                 onAtender={handleAtenderSolicitud}
+                onSoltar={(id) =>
+                  conAviso(() => solicitudesAlumnos.soltar(id), 'No se pudo soltar la solicitud.')
+                }
                 onRechazar={solicitudesAlumnos.rechazar}
                 onRegresarAPendiente={(id) =>
                   conAviso(

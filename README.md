@@ -187,6 +187,16 @@ La misma aplicación sirve un segundo portal en
    **genera** la constancia (abre el formulario del tipo pedido con los datos
    del alumno y las fechas del calendario; al generar, la solicitud queda
    "lista" y ligada al folio) o se **rechaza** con un motivo.
+   - **Que no se atrasen**: cada pendiente muestra cuánto lleva esperando,
+     en amarillo desde 1 día hábil y en rojo desde 2 (`DIAS_ATRASO` en
+     `frontend/src/constants/solicitudes.js`; no descuenta festivos). Inicio
+     avisa cuántas hay pendientes y cuántas atrasadas.
+   - **Que no se atiendan dos veces**: "Generar" toma la solicitud a nombre
+     de quien la atiende; las demás personas la ven ocupada y no pueden
+     generarla ni rechazarla. Antes de gastar el folio se vuelve a confirmar
+     la toma. Si alguien la deja a medias, se libera al salir del formulario,
+     con "Soltar", o sola a la hora (migración
+     `20261128000000_tomar_solicitudes.sql`).
 4. **Seguimiento**: el alumno ve en su panel si su solicitud está
    pendiente, lista (pasa a recogerla, con su folio) o rechazada (con el
    motivo).

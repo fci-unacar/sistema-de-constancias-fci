@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, apiFetchArchivo } from '../lib/api';
 import { USA_BASE_DE_DATOS } from '../lib/modo';
+import { ESTADO_SOLICITUD, NIVEL_ATRASO, nivelAtraso } from '../constants/solicitudes';
 
 /** Cada cuánto se vuelve a consultar la bandeja, para ver solicitudes nuevas sin recargar. */
 const INTERVALO_MS = 2 * 60 * 1000;
@@ -41,22 +42,41 @@ export function useSolicitudes() {
     return () => clearInterval(timer);
   }, [cargar]);
 
-  async function cambiarEstado(id, cambios) {
-    const { solicitud } = await apiFetch(`/solicitudes/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(cambios),
-    });
-    setSolicitudes((prev) => prev.map((s) => (s.id === id ? solicitud : s)));
-    return solicitud;
+  /**
+   * Manda una operación sobre una solicitud y reemplaza la fila con lo que
+   * devuelve la API. Si responde 409 (otra persona la tomó o ya la
+   * atendió), recarga la bandeja para que se vea quién y vuelve a lanzar el
+   * error con el mensaje para mostrar.
+   */
+  async function operar(id, path, options) {
+    try {
+      const { solicitud } = await apiFetch(path, options);
+      setSolicitudes((prev) => prev.map((s) => (s.id === id ? solicitud : s)));
+      return solicitud;
+    } catch (error) {
+      if (error.status === 409) cargar();
+      throw error;
+    }
   }
+
+  const cambiarEstado = (id, cambios) =>
+    operar(id, `/solicitudes/${id}`, { method: 'PATCH', body: JSON.stringify(cambios) });
+
+  const ahora = new Date();
+  const pendientes = solicitudes.filter((s) => s.estado === ESTADO_SOLICITUD.PENDIENTE);
 
   return {
     solicitudes,
-    pendientes: solicitudes.filter((s) => s.estado === 'pendiente').length,
+    pendientes: pendientes.length,
+    atrasadas: pendientes.filter((s) => nivelAtraso(s, ahora) === NIVEL_ATRASO.ATRASADA).length,
     cargando,
     errorCarga,
     disponible: USA_BASE_DE_DATOS,
     recargar,
+    /** La aparta a nombre de quien la va a atender; lanza ApiError 409 si la tiene otra persona. */
+    tomar: (id) => operar(id, `/solicitudes/${id}/tomar`, { method: 'POST' }),
+    /** La libera sin atenderla. */
+    soltar: (id) => operar(id, `/solicitudes/${id}/tomar`, { method: 'DELETE' }),
     /** Atendida: liga la constancia que se generó para ella. */
     marcarLista: (id, constanciaId) => cambiarEstado(id, { estado: 'lista', constanciaId }),
     rechazar: (id, motivo) => cambiarEstado(id, { estado: 'rechazada', motivo }),

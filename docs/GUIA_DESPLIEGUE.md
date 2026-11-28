@@ -74,6 +74,8 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
      (calendario escolar compartido y bucket privado para su PDF)
   7. `supabase/migrations/20261127000000_solicitudes_alumnos.sql`
      (solicitudes del portal de alumnos y bucket privado para los vouchers)
+  8. `supabase/migrations/20261128000000_tomar_solicitudes.sql`
+     (que dos personas no atiendan la misma solicitud)
 - [ ] Guardar en Bitwarden, desde **Project Settings → API**:
   - **Project URL**
   - **service_role key** (secreta: nunca va en el frontend ni en Git)

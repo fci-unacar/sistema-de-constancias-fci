@@ -30,7 +30,7 @@ function textoDeEstado(s) {
   if (s.estado === ESTADO_SOLICITUD.RECHAZADA) {
     return `Motivo: ${s.motivoRechazo ?? 'sin especificar'}. Corrige lo necesario y manda una solicitud nueva.`;
   }
-  return 'La Secretaría Académica revisará tu solicitud y tu voucher.';
+  return 'La Secretaría Académica revisará tu solicitud y tu voucher. La respuesta tarda hasta 2 días hábiles.';
 }
 
 function Campo({ label, children, ayuda }) {
