@@ -4,9 +4,14 @@
  * Vive en sessionStorage, no en localStorage: se borra al cerrar el
  * navegador, así que en un equipo compartido de la Secretaría nadie queda
  * con la sesión de otra persona abierta al día siguiente.
+ *
+ * El portal de alumnos guarda su sesión aparte (otra clave), para que abrir
+ * /alumnos en el mismo navegador no pise la sesión de Secretaría.
  */
 
-const KEY = 'constancias-fci-sesion-v1';
+import { ES_PORTAL_ALUMNOS } from './portal';
+
+const KEY = ES_PORTAL_ALUMNOS ? 'constancias-fci-sesion-alumno-v1' : 'constancias-fci-sesion-v1';
 
 export function loadSession() {
   try {

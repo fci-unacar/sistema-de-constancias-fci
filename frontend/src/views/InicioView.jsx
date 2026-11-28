@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import Icon from '../components/atoms/Icon';
 import { TIPO_CONSTANCIA, TIPO_LABEL } from '../constants/tipos';
+import { DIAS_ATRASO } from '../constants/solicitudes';
 
 const TIPOS_EN_GRAFICA = [
   { tipo: TIPO_CONSTANCIA.NORMAL, barClass: 'bg-primary' },
@@ -21,7 +22,46 @@ function StatTile({ icon, label, value, accent = 'text-primary' }) {
   );
 }
 
-export default function InicioView({ historial, onVerHistorial }) {
+/**
+ * Aviso de solicitudes de alumnos sin atender, arriba de todo: en rojo si
+ * alguna ya lleva DIAS_ATRASO días hábiles, para que no se acumulen.
+ */
+function AvisoSolicitudes({ pendientes, atrasadas, onVer }) {
+  if (!pendientes) return null;
+  const urgente = atrasadas > 0;
+  return (
+    <div
+      className={`flex flex-wrap items-center justify-between gap-space-sm rounded-xl px-space-md py-space-sm shadow-sm ${
+        urgente ? 'bg-error-container text-on-error-container' : 'bg-secondary-fixed text-on-secondary-fixed'
+      }`}
+    >
+      <span className="flex items-center gap-space-xs text-body-md">
+        <Icon name={urgente ? 'schedule' : 'inbox'} className="text-[20px]" />
+        <span>
+          <strong>{pendientes}</strong> {pendientes === 1 ? 'solicitud pendiente' : 'solicitudes pendientes'}{' '}
+          de alumnos
+          {urgente && (
+            <>
+              , <strong>{atrasadas}</strong> con {DIAS_ATRASO} días hábiles o más sin atenderse
+            </>
+          )}
+          .
+        </span>
+      </span>
+      <button type="button" onClick={onVer} className="font-bold underline">
+        Ver solicitudes
+      </button>
+    </div>
+  );
+}
+
+export default function InicioView({
+  historial,
+  onVerHistorial,
+  solicitudesPendientes = 0,
+  solicitudesAtrasadas = 0,
+  onVerSolicitudes,
+}) {
   const stats = useMemo(() => {
     const reales = historial.filter((e) => !e.isExample);
     const vigentes = reales.filter((e) => e.estado !== 'anulada');
@@ -42,6 +82,11 @@ export default function InicioView({ historial, onVerHistorial }) {
 
   return (
     <div className="flex flex-col gap-space-lg">
+      <AvisoSolicitudes
+        pendientes={solicitudesPendientes}
+        atrasadas={solicitudesAtrasadas}
+        onVer={onVerSolicitudes}
+      />
       <div className="grid grid-cols-1 gap-space-md sm:grid-cols-3">
         <StatTile icon="fact_check" label="Constancias generadas" value={stats.total} />
         <StatTile icon="tag" label="Folio más reciente" value={stats.folioReciente} accent="text-secondary" />

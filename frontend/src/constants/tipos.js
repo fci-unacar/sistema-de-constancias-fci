@@ -15,6 +15,7 @@ export const VISTA = {
   NUEVA_TERMINACION: 'nueva-terminacion',
   CALENDARIO: 'calendario',
   PLANTILLAS: 'plantillas',
+  SOLICITUDES: 'solicitudes',
 };
 
 /** Tipo de constancia correspondiente a cada vista "Nueva", si aplica. */
@@ -23,6 +24,19 @@ export const TIPO_POR_VISTA = {
   [VISTA.NUEVA_PROMEDIO]: TIPO_CONSTANCIA.PROMEDIO,
   [VISTA.NUEVA_BUENA_CONDUCTA]: TIPO_CONSTANCIA.BUENA_CONDUCTA,
   [VISTA.NUEVA_TERMINACION]: TIPO_CONSTANCIA.TERMINACION,
+};
+
+/** Vista "Nueva" de cada tipo de constancia (lo inverso de TIPO_POR_VISTA). */
+export const VISTA_POR_TIPO = Object.fromEntries(
+  Object.entries(TIPO_POR_VISTA).map(([vista, tipo]) => [tipo, vista]),
+);
+
+/** Nombre completo de cada tipo, para quien no conoce los nombres cortos (portal de alumnos). */
+export const TIPO_NOMBRE_COMPLETO = {
+  [TIPO_CONSTANCIA.NORMAL]: 'Constancia de estudios (reinscripción)',
+  [TIPO_CONSTANCIA.PROMEDIO]: 'Constancia de promedio',
+  [TIPO_CONSTANCIA.BUENA_CONDUCTA]: 'Carta de buena conducta',
+  [TIPO_CONSTANCIA.TERMINACION]: 'Constancia de terminación de estudios',
 };
 
 export const TIPO_LABEL = {

@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiConfigurada, apiFetch } from '../lib/api';
 import { loadSession, saveSession, clearSession, secondsLeft } from '../lib/session';
-
-/** Cuántos segundos antes de que expire el access token se pide uno nuevo. */
-const MARGEN_REFRESH = 60;
+import { MARGEN_REFRESH, refrescarSesion, useRenovarSesion } from './useRenovarSesion';
 
 export const AUTH = {
   CHECKING: 'checking', // validando una sesión guardada
@@ -42,15 +40,6 @@ function estadoInicial() {
   return loadSession() ? { status: AUTH.CHECKING, user: null } : { status: AUTH.ANON, user: null };
 }
 
-async function refrescar(session) {
-  const nueva = await apiFetch('/auth/refresh', {
-    method: 'POST',
-    body: JSON.stringify({ refreshToken: session.refreshToken }),
-  });
-  saveSession(nueva);
-  return nueva;
-}
-
 /**
  * Sesión del usuario contra la API (ver api/src/auth.js). Al abrir la app
  * valida la sesión guardada, y mientras está abierta renueva el access
@@ -66,7 +55,7 @@ export function useAuth() {
     (async () => {
       try {
         let session = loadSession();
-        if (secondsLeft(session) < MARGEN_REFRESH) session = await refrescar(session);
+        if (secondsLeft(session) < MARGEN_REFRESH) session = await refrescarSesion(session);
         const { user } = await apiFetch('/auth/me');
         if (!cancelled) setState({ status: AUTH.AUTHED, user });
       } catch (error) {
@@ -81,24 +70,9 @@ export function useAuth() {
   }, [state.status]);
 
   // Renovar el token antes de que expire.
-  useEffect(() => {
-    if (!AUTH_ACTIVADA || state.status !== AUTH.AUTHED) return;
-    const session = loadSession();
-    if (!session) return;
-    const espera = Math.max(secondsLeft(session) - MARGEN_REFRESH, 5) * 1000;
-    const timer = setTimeout(async () => {
-      try {
-        await refrescar(session);
-        setState((prev) => ({ ...prev })); // reprograma el siguiente refresh
-      } catch (error) {
-        if (error.status === 401) {
-          clearSession();
-          setState({ status: AUTH.ANON, user: null, error: 'Tu sesión expiró. Inicia sesión de nuevo.' });
-        }
-      }
-    }, espera);
-    return () => clearTimeout(timer);
-  }, [state]);
+  useRenovarSesion(AUTH_ACTIVADA && state.status === AUTH.AUTHED, () =>
+    setState({ status: AUTH.ANON, user: null, error: 'Tu sesión expiró. Inicia sesión de nuevo.' }),
+  );
 
   /** Sin validación (modo demostración): entra con el correo tal cual, sin llamar a la API. */
   function entrarSinValidar(email) {

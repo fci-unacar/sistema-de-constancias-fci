@@ -72,6 +72,12 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
      (permite buena conducta y terminación de estudios)
   6. `supabase/migrations/20261125030000_calendario.sql`
      (calendario escolar compartido y bucket privado para su PDF)
+  7. `supabase/migrations/20261127000000_solicitudes_alumnos.sql`
+     (solicitudes del portal de alumnos y bucket privado para los vouchers)
+  8. `supabase/migrations/20261128000000_tomar_solicitudes.sql`
+     (que dos personas no atiendan la misma solicitud)
+  9. `supabase/migrations/20261128010000_una_pendiente_por_tipo.sql`
+     (un alumno solo puede tener una solicitud pendiente de cada tipo)
 - [ ] Guardar en Bitwarden, desde **Project Settings → API**:
   - **Project URL**
   - **service_role key** (secreta: nunca va en el frontend ni en Git)
@@ -92,10 +98,17 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
 
   ```html
   <h2>Sistema de Constancias FCI</h2>
-  <p>Tu código para crear o cambiar tu contraseña es:</p>
+  <p>Tu código de acceso es:</p>
   <p style="font-size:24px;font-weight:bold;letter-spacing:4px">{{ .Token }}</p>
   <p>Vence en una hora. Si no lo pediste, ignora este correo.</p>
   ```
+
+  El mismo correo sirve para el personal (crear o cambiar su contraseña) y
+  para los alumnos (entrar al portal `/alumnos`), por eso el texto es general.
+
+- [ ] **Authentication → Rate Limits**: subir "Rate limit for sending
+      emails" (con SMTP propio Supabase empieza en 30 por hora, y cada
+      alumno que entra al portal gasta uno). Gmail permite unos 500 al día.
 
 - [ ] Dar de alta tu correo institucional para probar:
 

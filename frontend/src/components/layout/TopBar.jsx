@@ -11,6 +11,7 @@ const TITLES = {
   [VISTA.NUEVA_TERMINACION]: 'Emisión de Constancia de Terminación de Estudios',
   [VISTA.CALENDARIO]: 'Calendario Escolar',
   [VISTA.PLANTILLAS]: 'Configuración de Plantillas',
+  [VISTA.SOLICITUDES]: 'Solicitudes de Alumnos',
 };
 
 export default function TopBar({ view, historialCount, onSearch, user, onLogout }) {

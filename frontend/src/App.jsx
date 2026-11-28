@@ -12,13 +12,17 @@ import { useProgramas } from './hooks/useProgramas';
 import { useCalendario } from './hooks/useCalendario';
 import { usePlantillas } from './hooks/usePlantillas';
 import PlantillasView from './views/PlantillasView';
+import SolicitudesView from './views/SolicitudesView';
+import { useSolicitudes } from './hooks/useSolicitudes';
 import { useToast } from './hooks/useToast';
-import { VISTA, TIPO_POR_VISTA } from './constants/tipos';
+import { VISTA, TIPO_POR_VISTA, VISTA_POR_TIPO } from './constants/tipos';
 import { todayStr } from './utils/spanishText';
 
 export default function App({ user, onLogout }) {
   const [view, setView] = useState(VISTA.INICIO);
   const [prefill, setPrefill] = useState(null); // { tipo, data } al "duplicar para nueva emisión"
+  // Solicitud de alumno que se está atendiendo: al generar su constancia queda como "lista".
+  const [solicitudEnCurso, setSolicitudEnCurso] = useState(null);
   const [historialQuery, setHistorialQuery] = useState('');
   const {
     historial,
@@ -38,11 +42,24 @@ export default function App({ user, onLogout }) {
   const { programas } = useProgramas();
   const { calendario, guardarCalendario, pdfUrl: calendarioPdfUrl, subirPdf } = useCalendario();
   const { firmantes, guardarFirmantes } = usePlantillas();
+  const solicitudesAlumnos = useSolicitudes();
   const { message, showToast } = useToast();
+
+  /** Deja libre la solicitud que se estaba atendiendo, para que otra persona pueda tomarla. */
+  function soltarSolicitudEnCurso() {
+    if (!solicitudEnCurso) return;
+    solicitudesAlumnos
+      .soltar(solicitudEnCurso.id)
+      // Si falla, la toma vence sola a la hora.
+      .catch((error) => console.warn('No se pudo soltar la solicitud:', error.message));
+    setSolicitudEnCurso(null);
+  }
 
   function changeView(nextView) {
     setPrefill(null);
+    soltarSolicitudEnCurso();
     setView(nextView);
+    if (nextView === VISTA.SOLICITUDES) solicitudesAlumnos.recargar();
   }
 
   function handleSearchSubmit(query) {
@@ -67,6 +84,21 @@ export default function App({ user, onLogout }) {
     // Secretaria, esta constancia se sigue reimprimiendo con su firma original.
     const { secretaria, director, ccpIniciales } = firmantes;
     const data = { ...datosFormulario, firmantes: { secretaria, director, ccpIniciales } };
+    // Antes de gastar un folio, confirmar que la solicitud sigue siendo de
+    // quien la atiende (la toma renueva su hora). Si otra persona la tomó o
+    // ya la atendieron, no se genera nada.
+    if (solicitudEnCurso) {
+      try {
+        await solicitudesAlumnos.tomar(solicitudEnCurso.id);
+      } catch (error) {
+        generando.current = false;
+        setPrefill(null);
+        setSolicitudEnCurso(null);
+        setView(VISTA.SOLICITUDES);
+        showToast(`No se generó la constancia: ${error.message}`);
+        return;
+      }
+    }
     let entry;
     try {
       entry = await registrarConstancia({ tipo, data });
@@ -78,16 +110,28 @@ export default function App({ user, onLogout }) {
       generando.current = false;
     }
     const folioSuffix = entry.folio.replace('FCI-', '');
+    const solicitud = solicitudEnCurso;
     setPrefill(null);
-    setView(VISTA.HISTORIAL);
+    setSolicitudEnCurso(null);
+    setView(solicitud ? VISTA.SOLICITUDES : VISTA.HISTORIAL);
+    let avisoSolicitud = '';
+    if (solicitud) {
+      try {
+        await solicitudesAlumnos.marcarLista(solicitud.id, entry.id);
+        avisoSolicitud = ' La solicitud del alumno quedó como lista.';
+      } catch (error) {
+        console.error('No se pudo marcar la solicitud como lista:', error);
+        avisoSolicitud = ` No se pudo marcar la solicitud como lista: ${error.message}`;
+      }
+    }
     try {
       const { downloadConstanciaPdf } = await import('./pdf/downloadConstanciaPdf');
       await downloadConstanciaPdf({ tipo, data, folio: folioSuffix });
-      showToast(`Constancia ${entry.folio} generada y descargada.`);
+      showToast(`Constancia ${entry.folio} generada y descargada.${avisoSolicitud}`);
     } catch (error) {
       console.error('No se pudo generar el PDF:', error);
       showToast(
-        `Constancia ${entry.folio} generada, pero el PDF falló. Descárgalo de nuevo desde el historial.`,
+        `Constancia ${entry.folio} generada, pero el PDF falló. Descárgalo de nuevo desde el historial.${avisoSolicitud}`,
       );
     }
   }
@@ -103,7 +147,28 @@ export default function App({ user, onLogout }) {
     if (data.fechaExpedicion) data.fechaExpedicion = todayStr();
     if (data.fechaConsulta) data.fechaConsulta = todayStr();
     setPrefill({ tipo: item.tipo, data });
-    setView(TIPO_POR_VISTA[item.tipo] ?? VISTA.NUEVA_NORMAL);
+    soltarSolicitudEnCurso();
+    setView(VISTA_POR_TIPO[item.tipo] ?? VISTA.NUEVA_NORMAL);
+  }
+
+  /**
+   * "Generar" desde la bandeja de solicitudes: la toma a nombre de quien la
+   * atiende (si otra persona ya la tiene, avisa y no abre nada) y abre el
+   * formulario del tipo pedido con los datos que capturó el alumno. Las
+   * fechas del semestre y la de expedición se llenan igual que en una
+   * constancia nueva.
+   */
+  async function handleAtenderSolicitud(solicitud) {
+    try {
+      await solicitudesAlumnos.tomar(solicitud.id);
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
+    const { tipo, nombre, matricula, programa } = solicitud;
+    setPrefill({ tipo, data: { alumno: nombre, matricula, programa } });
+    setSolicitudEnCurso(solicitud);
+    setView(VISTA_POR_TIPO[tipo] ?? VISTA.NUEVA_NORMAL);
   }
 
   async function handleImportar(entradas) {
@@ -130,7 +195,13 @@ export default function App({ user, onLogout }) {
 
   return (
     <div className="min-h-screen bg-background text-on-surface font-sans antialiased">
-      <Sidebar view={view} onChangeView={changeView} user={user} onLogout={onLogout} />
+      <Sidebar
+        view={view}
+        onChangeView={changeView}
+        user={user}
+        onLogout={onLogout}
+        solicitudesPendientes={solicitudesAlumnos.pendientes}
+      />
       <div className="pl-gutter-sidebar">
         <TopBar
           view={view}
@@ -156,7 +227,13 @@ export default function App({ user, onLogout }) {
               </div>
             )}
             {view === VISTA.INICIO && (
-              <InicioView historial={historial} onVerHistorial={() => setView(VISTA.HISTORIAL)} />
+              <InicioView
+                historial={historial}
+                onVerHistorial={() => setView(VISTA.HISTORIAL)}
+                solicitudesPendientes={solicitudesAlumnos.pendientes}
+                solicitudesAtrasadas={solicitudesAlumnos.atrasadas}
+                onVerSolicitudes={() => changeView(VISTA.SOLICITUDES)}
+              />
             )}
             {view === VISTA.HISTORIAL && (
               <HistorialView
@@ -174,6 +251,21 @@ export default function App({ user, onLogout }) {
                 onImportar={handleImportar}
               />
             )}
+            {tipoActual && solicitudEnCurso && (
+              <div className="mb-space-md flex flex-wrap items-center justify-between gap-space-sm rounded-xl bg-secondary-fixed px-space-md py-space-sm text-on-secondary-fixed text-label-md">
+                <span className="flex items-center gap-space-xs">
+                  <Icon name="inbox" className="text-[18px]" />
+                  <span>
+                    Atendiendo la solicitud de <strong>{solicitudEnCurso.nombre}</strong> (
+                    {solicitudEnCurso.matricula}). Está apartada a tu nombre: nadie más puede atenderla
+                    mientras tanto. Al generar, quedará como lista.
+                  </span>
+                </span>
+                <button type="button" onClick={() => changeView(VISTA.SOLICITUDES)} className="underline">
+                  Volver a solicitudes
+                </button>
+              </div>
+            )}
             {tipoActual && (
               <NuevaConstanciaView
                 key={view}
@@ -184,6 +276,28 @@ export default function App({ user, onLogout }) {
                 programas={programas}
                 calendario={calendario}
                 firmantes={firmantes}
+              />
+            )}
+            {view === VISTA.SOLICITUDES && (
+              <SolicitudesView
+                solicitudes={solicitudesAlumnos.solicitudes}
+                cargando={solicitudesAlumnos.cargando}
+                errorCarga={solicitudesAlumnos.errorCarga}
+                disponible={solicitudesAlumnos.disponible}
+                onRecargar={solicitudesAlumnos.recargar}
+                usuarioEmail={user?.email}
+                onAtender={handleAtenderSolicitud}
+                onSoltar={(id) =>
+                  conAviso(() => solicitudesAlumnos.soltar(id), 'No se pudo soltar la solicitud.')
+                }
+                onRechazar={solicitudesAlumnos.rechazar}
+                onRegresarAPendiente={(id) =>
+                  conAviso(
+                    () => solicitudesAlumnos.regresarAPendiente(id),
+                    'No se pudo regresar la solicitud.',
+                  )
+                }
+                onDescargarVoucher={solicitudesAlumnos.descargarVoucher}
               />
             )}
             {view === VISTA.PLANTILLAS && (

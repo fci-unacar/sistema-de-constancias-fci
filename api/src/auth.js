@@ -28,14 +28,14 @@ import { estaAutorizado, MENSAJE_NO_AUTORIZADO } from './autorizados.js';
  * siguientes de la API saldrían con el token de ese usuario en vez de la
  * llave service_role.
  */
-function clienteDeSesion() {
+export function clienteDeSesion() {
   return createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
 
 /** Solo lo que el frontend necesita; nunca el objeto de usuario completo de Supabase. */
-function respuestaDeSesion(session) {
+export function respuestaDeSesion(session) {
   return {
     accessToken: session.access_token,
     refreshToken: session.refresh_token,
@@ -44,7 +44,7 @@ function respuestaDeSesion(session) {
   };
 }
 
-function sinSupabase(res) {
+export function sinSupabase(res) {
   return res.status(503).json({ error: 'La autenticación no está configurada en el servidor.' });
 }
 
@@ -52,11 +52,11 @@ function sinSupabase(res) {
  * Supabase no contestó (red caída o error 5xx): no es culpa de las
  * credenciales, así que no se debe responder "contraseña incorrecta".
  */
-function falloDeServicio(error) {
+export function falloDeServicio(error) {
   return isAuthRetryableFetchError(error) || (error?.status ?? 0) >= 500;
 }
 
-function servicioCaido(res, error) {
+export function servicioCaido(res, error) {
   console.error('Supabase Auth no respondió:', error.message);
   return res.status(503).json({ error: 'El servicio de autenticación no respondió. Intenta de nuevo.' });
 }
@@ -160,7 +160,7 @@ const LONGITUD_MINIMA_PASSWORD = 8;
 const MENSAJE_CODIGO_ENVIADO =
   'Si tu correo está registrado, te llegará un código en unos minutos. Revisa también la carpeta de correo no deseado.';
 
-function normalizarEmail(email) {
+export function normalizarEmail(email) {
   return typeof email === 'string' ? email.trim().toLowerCase() : '';
 }
 

@@ -16,6 +16,8 @@ import { authRouter } from './auth.js';
 import { datosRouter } from './constancias.js';
 import { calendarioRouter } from './calendario.js';
 import { plantillasRouter } from './plantillas.js';
+import { alumnosRouter } from './alumnos.js';
+import { solicitudesRouter } from './solicitudes.js';
 
 const app = express();
 
@@ -68,12 +70,33 @@ app.get('/health', async (_req, res) => {
 // Inicio de sesión.
 app.use('/auth', authRouter);
 
+// Portal de alumnos: su propio inicio de sesión (código al correo) y sus
+// solicitudes. Va antes de datosRouter, que exige sesión de Secretaría en
+// todas las rutas que caen hasta él.
+app.use('/alumno', alumnosRouter);
+
 // Calendario escolar (fechas y PDF), historial y programas. Los routers
 // aplican requireAuth a todas sus rutas, por eso van al final: cualquier
 // ruta que no exista responde 401 sin sesión.
 app.use('/calendario', calendarioRouter);
 app.use('/plantillas', plantillasRouter);
+app.use('/solicitudes', solicitudesRouter);
 app.use(datosRouter);
+
+// Errores de los parsers de Express (archivo o JSON demasiado grande, JSON
+// mal formado): responder con un mensaje claro en JSON y no con la página
+// HTML por defecto.
+// eslint-disable-next-line no-unused-vars
+app.use((error, _req, res, _next) => {
+  if (error.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'El archivo es demasiado grande.' });
+  }
+  if (error.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'La petición no tiene el formato esperado.' });
+  }
+  console.error('Error no controlado:', error);
+  return res.status(500).json({ error: 'Ocurrió un error en el servidor.' });
+});
 
 app.listen(config.port, () => {
   console.log(`API escuchando en el puerto ${config.port}`);
