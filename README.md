@@ -175,7 +175,7 @@ La misma aplicación sirve un segundo portal en
 `https://<frontend>/alumnos` (ver `frontend/src/lib/portal.js`):
 
 1. **Entrada sin contraseña**: el alumno escribe su correo institucional
-   (`@delfin.unacar.mx`, configurable con `ALUMNOS_DOMINIO` en la API), le
+   (`@mail.unacar.mx`, configurable con `ALUMNOS_DOMINIO` en la API), le
    llega un código y con él entra. No hay que darlo de alta: cualquier
    correo del dominio puede entrar. Esa sesión **no** abre el panel de
    Secretaría, que sigue exigiendo estar en `usuarios_autorizados`.
@@ -449,7 +449,7 @@ público**. Por eso aquí no va ninguna llave de Supabase.
 | `FRONTEND_URL`              | Origen permitido por CORS, sin barra final | La URL que da Vercel                             |
 | `PORT`                      | Puerto de escucha                          | Render la inyecta sola; en local, 3000           |
 | `HEALTH_TABLE`              | Tabla que consulta `/health` (opcional)    | Por defecto `constancias`                        |
-| `ALUMNOS_DOMINIO`           | Dominio de correo de los alumnos (opcional) | Por defecto `delfin.unacar.mx`                   |
+| `ALUMNOS_DOMINIO`           | Dominio de correo de los alumnos (opcional) | Por defecto `mail.unacar.mx`                     |
 
 ### GitHub Actions
 

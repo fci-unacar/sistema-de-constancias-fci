@@ -98,7 +98,7 @@ export default function AlumnoLoginView({
                 required
                 autoFocus
                 className={inputClass}
-                placeholder="matricula@delfin.unacar.mx"
+                placeholder="alumno@mail.unacar.mx"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />

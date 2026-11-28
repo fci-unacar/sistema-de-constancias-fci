@@ -2,7 +2,7 @@
  * Portal de alumnos: inicio de sesión y solicitudes de constancia.
  *
  * Cualquier correo institucional (ALUMNOS_DOMINIO, por defecto
- * delfin.unacar.mx) puede entrar, sin que nadie lo dé de alta: el alumno
+ * mail.unacar.mx) puede entrar, sin que nadie lo dé de alta: el alumno
  * escribe su correo, le llega un código y con él queda dentro. No hay
  * contraseña. Esta sesión NO abre el panel de Secretaría: ese sigue
  * pidiendo estar en usuarios_autorizados (ver requireAuth en auth.js).
