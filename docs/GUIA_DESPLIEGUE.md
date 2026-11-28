@@ -76,6 +76,8 @@ Una sola cuenta, que no es de ninguna persona, es dueña de todo.
      (solicitudes del portal de alumnos y bucket privado para los vouchers)
   8. `supabase/migrations/20261128000000_tomar_solicitudes.sql`
      (que dos personas no atiendan la misma solicitud)
+  9. `supabase/migrations/20261128010000_una_pendiente_por_tipo.sql`
+     (un alumno solo puede tener una solicitud pendiente de cada tipo)
 - [ ] Guardar en Bitwarden, desde **Project Settings → API**:
   - **Project URL**
   - **service_role key** (secreta: nunca va en el frontend ni en Git)

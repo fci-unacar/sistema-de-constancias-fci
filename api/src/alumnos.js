@@ -9,7 +9,8 @@
  *
  * Con la sesión, el alumno manda solicitudes (nombre, matrícula,
  * programa, tipo y voucher de pago) y ve el estado de las suyas. Solo ve
- * las que hizo con su correo. Secretaría las atiende desde solicitudes.js.
+ * las que hizo con su correo, y solo puede tener una pendiente de cada tipo.
+ * Secretaría las atiende desde solicitudes.js.
  *
  * Se monta en /alumno (ver server.js).
  */
@@ -31,9 +32,25 @@ import { TIPOS, tipoDeArchivo } from './validacion.js';
 export const BUCKET_VOUCHERS = 'vouchers';
 /** Igual que el límite del bucket "vouchers". */
 const MAX_VOUCHER = 5 * 1024 * 1024;
-/** Frena que un alumno llene la bandeja de Secretaría. */
-const MAX_PENDIENTES = 5;
 const EXTENSION = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png' };
+
+/** Igual que TIPO_NOMBRE_COMPLETO en el frontend, para los mensajes al alumno. */
+const NOMBRE_TIPO = {
+  normal: 'constancia de estudios (reinscripción)',
+  promedio: 'constancia de promedio',
+  'buena-conducta': 'carta de buena conducta',
+  terminacion: 'constancia de terminación de estudios',
+};
+
+/**
+ * El alumno ya tiene una solicitud pendiente de ese tipo: solo puede haber
+ * una por tipo, para que no se acumulen repetidas en la bandeja.
+ */
+function yaTienePendiente(res, tipo) {
+  return res.status(409).json({
+    error: `Ya tienes una solicitud de ${NOMBRE_TIPO[tipo]} pendiente. Podrás pedir otra cuando Secretaría la apruebe o la rechace.`,
+  });
+}
 
 /** true si el correo es del dominio institucional. */
 function esCorreoInstitucional(email) {
@@ -249,17 +266,16 @@ alumnosRouter.post(
     if (errorProg) return falloDeBase(res, errorProg, 'No se pudo validar el programa');
     if (!prog) return res.status(400).json({ error: 'Elige un programa educativo de la lista.' });
 
+    // Una sola pendiente por tipo (también lo garantiza un índice único en
+    // la base). Se revisa antes de subir el voucher para no guardarlo de balde.
     const { count, error: errorConteo } = await supabase
       .from('solicitudes')
       .select('id', { count: 'exact', head: true })
       .eq('alumno_email', req.alumno.email)
+      .eq('tipo', tipo)
       .eq('estado', 'pendiente');
-    if (errorConteo) return falloDeBase(res, errorConteo, 'No se pudieron contar las solicitudes pendientes');
-    if (count >= MAX_PENDIENTES) {
-      return res.status(429).json({
-        error: `Ya tienes ${count} solicitudes pendientes. Espera a que Secretaría las atienda antes de mandar otra.`,
-      });
-    }
+    if (errorConteo) return falloDeBase(res, errorConteo, 'No se pudieron revisar las solicitudes pendientes');
+    if (count > 0) return yaTienePendiente(res, tipo);
 
     const id = randomUUID();
     const ruta = `${id}.${EXTENSION[voucherTipo]}`;
@@ -286,6 +302,8 @@ alumnosRouter.post(
     if (error) {
       // Sin fila que lo use, el voucher se queda huérfano: se borra.
       await supabase.storage.from(BUCKET_VOUCHERS).remove([ruta]);
+      // 23505: el índice de una pendiente por tipo (dos envíos al mismo tiempo).
+      if (error.code === '23505') return yaTienePendiente(res, tipo);
       return falloDeBase(res, error, 'No se pudo registrar la solicitud');
     }
     return res.status(201).json({ solicitud: aAlumno(data) });

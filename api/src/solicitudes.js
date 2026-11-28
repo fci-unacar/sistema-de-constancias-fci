@@ -217,7 +217,16 @@ solicitudesRouter.patch('/:id', async (req, res) => {
       .eq('id', id)
       .eq('estado', 'rechazada')
       .select('id');
-    if (error) return falloDeBase(res, error, 'No se pudo regresar la solicitud');
+    if (error) {
+      // 23505: el alumno ya mandó otra pendiente del mismo tipo (solo puede haber una).
+      if (error.code === '23505') {
+        return res.status(409).json({
+          error:
+            'No se puede regresar: el alumno ya tiene otra solicitud pendiente de ese tipo. Atiende esa en su lugar.',
+        });
+      }
+      return falloDeBase(res, error, 'No se pudo regresar la solicitud');
+    }
     if (!data.length) return responderConflicto(res, id);
     return res.json({ solicitud: aFrontend(await leerSolicitud(id)) });
   }

@@ -59,6 +59,13 @@ export default function AlumnoPanelView({ user, onLogout }) {
   const listaRef = useRef(null);
   const precargado = useRef(false);
 
+  // Solo una pendiente por tipo (la API y la base también lo validan): esos
+  // tipos salen deshabilitados hasta que Secretaría los apruebe o rechace.
+  const tiposPendientes = new Set(
+    solicitudes.filter((s) => s.estado === ESTADO_SOLICITUD.PENDIENTE).map((s) => s.tipo),
+  );
+  const todosPendientes = Object.values(TIPO_CONSTANCIA).every((t) => tiposPendientes.has(t));
+
   // Precarga nombre, matrícula y programa de la última solicitud, para no
   // volver a escribirlos cada vez.
   useEffect(() => {
@@ -188,14 +195,30 @@ export default function AlumnoPanelView({ user, onLogout }) {
               </select>
             </Campo>
 
-            <Campo label="Tipo de constancia">
-              <select required className={inputAlumno} value={form.tipo} onChange={cambiar('tipo')}>
+            <Campo
+              label="Tipo de constancia"
+              ayuda={
+                tiposPendientes.size > 0
+                  ? 'Solo puedes tener una solicitud pendiente de cada tipo. Podrás pedir otra cuando Secretaría la apruebe o la rechace.'
+                  : null
+              }
+            >
+              <select
+                required
+                disabled={todosPendientes}
+                className={`${inputAlumno} disabled:opacity-60`}
+                value={form.tipo}
+                onChange={cambiar('tipo')}
+              >
                 <option value="" disabled>
-                  Elige el tipo de constancia
+                  {todosPendientes
+                    ? 'Ya tienes pendiente un tipo de cada uno'
+                    : 'Elige el tipo de constancia'}
                 </option>
                 {Object.values(TIPO_CONSTANCIA).map((t) => (
-                  <option key={t} value={t}>
+                  <option key={t} value={t} disabled={tiposPendientes.has(t)}>
                     {TIPO_NOMBRE_COMPLETO[t]}
+                    {tiposPendientes.has(t) ? ' (pendiente)' : ''}
                   </option>
                 ))}
               </select>

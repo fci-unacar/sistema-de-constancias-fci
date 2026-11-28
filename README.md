@@ -181,7 +181,10 @@ La misma aplicación sirve un segundo portal en
    Secretaría, que sigue exigiendo estar en `usuarios_autorizados`.
 2. **Solicitud**: llena nombre completo, matrícula, programa educativo,
    tipo de constancia y adjunta su **voucher de pago** (PDF, JPG o PNG,
-   máximo 5 MB). Puede tener hasta 5 solicitudes pendientes a la vez.
+   máximo 5 MB). Solo puede tener **una solicitud pendiente de cada tipo**
+   (puede tener los cuatro tipos pendientes a la vez, pero no dos de la misma);
+   cuando Secretaría la aprueba o la rechaza, puede volver a pedir ese tipo.
+   Lo revisan el formulario, la API y un índice único en la base.
 3. **Bandeja de Secretaría**: en el panel aparece "Solicitudes de Alumnos"
    con un contador de pendientes. Desde ahí se ve el voucher y se
    **genera** la constancia (abre el formulario del tipo pedido con los datos
