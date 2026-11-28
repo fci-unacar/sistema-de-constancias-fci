@@ -12,13 +12,17 @@ import { useProgramas } from './hooks/useProgramas';
 import { useCalendario } from './hooks/useCalendario';
 import { usePlantillas } from './hooks/usePlantillas';
 import PlantillasView from './views/PlantillasView';
+import SolicitudesView from './views/SolicitudesView';
+import { useSolicitudes } from './hooks/useSolicitudes';
 import { useToast } from './hooks/useToast';
-import { VISTA, TIPO_POR_VISTA } from './constants/tipos';
+import { VISTA, TIPO_POR_VISTA, VISTA_POR_TIPO } from './constants/tipos';
 import { todayStr } from './utils/spanishText';
 
 export default function App({ user, onLogout }) {
   const [view, setView] = useState(VISTA.INICIO);
   const [prefill, setPrefill] = useState(null); // { tipo, data } al "duplicar para nueva emisión"
+  // Solicitud de alumno que se está atendiendo: al generar su constancia queda como "lista".
+  const [solicitudEnCurso, setSolicitudEnCurso] = useState(null);
   const [historialQuery, setHistorialQuery] = useState('');
   const {
     historial,
@@ -38,11 +42,14 @@ export default function App({ user, onLogout }) {
   const { programas } = useProgramas();
   const { calendario, guardarCalendario, pdfUrl: calendarioPdfUrl, subirPdf } = useCalendario();
   const { firmantes, guardarFirmantes } = usePlantillas();
+  const solicitudesAlumnos = useSolicitudes();
   const { message, showToast } = useToast();
 
   function changeView(nextView) {
     setPrefill(null);
+    setSolicitudEnCurso(null);
     setView(nextView);
+    if (nextView === VISTA.SOLICITUDES) solicitudesAlumnos.recargar();
   }
 
   function handleSearchSubmit(query) {
@@ -78,16 +85,28 @@ export default function App({ user, onLogout }) {
       generando.current = false;
     }
     const folioSuffix = entry.folio.replace('FCI-', '');
+    const solicitud = solicitudEnCurso;
     setPrefill(null);
-    setView(VISTA.HISTORIAL);
+    setSolicitudEnCurso(null);
+    setView(solicitud ? VISTA.SOLICITUDES : VISTA.HISTORIAL);
+    let avisoSolicitud = '';
+    if (solicitud) {
+      try {
+        await solicitudesAlumnos.marcarLista(solicitud.id, entry.id);
+        avisoSolicitud = ' La solicitud del alumno quedó como lista.';
+      } catch (error) {
+        console.error('No se pudo marcar la solicitud como lista:', error);
+        avisoSolicitud = ` No se pudo marcar la solicitud como lista: ${error.message}`;
+      }
+    }
     try {
       const { downloadConstanciaPdf } = await import('./pdf/downloadConstanciaPdf');
       await downloadConstanciaPdf({ tipo, data, folio: folioSuffix });
-      showToast(`Constancia ${entry.folio} generada y descargada.`);
+      showToast(`Constancia ${entry.folio} generada y descargada.${avisoSolicitud}`);
     } catch (error) {
       console.error('No se pudo generar el PDF:', error);
       showToast(
-        `Constancia ${entry.folio} generada, pero el PDF falló. Descárgalo de nuevo desde el historial.`,
+        `Constancia ${entry.folio} generada, pero el PDF falló. Descárgalo de nuevo desde el historial.${avisoSolicitud}`,
       );
     }
   }
@@ -103,7 +122,20 @@ export default function App({ user, onLogout }) {
     if (data.fechaExpedicion) data.fechaExpedicion = todayStr();
     if (data.fechaConsulta) data.fechaConsulta = todayStr();
     setPrefill({ tipo: item.tipo, data });
-    setView(TIPO_POR_VISTA[item.tipo] ?? VISTA.NUEVA_NORMAL);
+    setSolicitudEnCurso(null);
+    setView(VISTA_POR_TIPO[item.tipo] ?? VISTA.NUEVA_NORMAL);
+  }
+
+  /**
+   * "Generar" desde la bandeja de solicitudes: abre el formulario del tipo
+   * pedido con los datos que capturó el alumno. Las fechas del semestre y
+   * la de expedición se llenan igual que en una constancia nueva.
+   */
+  function handleAtenderSolicitud(solicitud) {
+    const { tipo, nombre, matricula, programa } = solicitud;
+    setPrefill({ tipo, data: { alumno: nombre, matricula, programa } });
+    setSolicitudEnCurso(solicitud);
+    setView(VISTA_POR_TIPO[tipo] ?? VISTA.NUEVA_NORMAL);
   }
 
   async function handleImportar(entradas) {
@@ -130,7 +162,13 @@ export default function App({ user, onLogout }) {
 
   return (
     <div className="min-h-screen bg-background text-on-surface font-sans antialiased">
-      <Sidebar view={view} onChangeView={changeView} user={user} onLogout={onLogout} />
+      <Sidebar
+        view={view}
+        onChangeView={changeView}
+        user={user}
+        onLogout={onLogout}
+        solicitudesPendientes={solicitudesAlumnos.pendientes}
+      />
       <div className="pl-gutter-sidebar">
         <TopBar
           view={view}
@@ -174,6 +212,21 @@ export default function App({ user, onLogout }) {
                 onImportar={handleImportar}
               />
             )}
+            {tipoActual && solicitudEnCurso && (
+              <div className="mb-space-md flex flex-wrap items-center justify-between gap-space-sm rounded-xl bg-secondary-fixed px-space-md py-space-sm text-on-secondary-fixed text-label-md">
+                <span className="flex items-center gap-space-xs">
+                  <Icon name="inbox" className="text-[18px]" />
+                  <span>
+                    Atendiendo la solicitud de <strong>{solicitudEnCurso.nombre}</strong> (
+                    {solicitudEnCurso.matricula}). Revisa y completa los datos; al generar, la solicitud
+                    quedará como lista.
+                  </span>
+                </span>
+                <button type="button" onClick={() => changeView(VISTA.SOLICITUDES)} className="underline">
+                  Volver a solicitudes
+                </button>
+              </div>
+            )}
             {tipoActual && (
               <NuevaConstanciaView
                 key={view}
@@ -184,6 +237,24 @@ export default function App({ user, onLogout }) {
                 programas={programas}
                 calendario={calendario}
                 firmantes={firmantes}
+              />
+            )}
+            {view === VISTA.SOLICITUDES && (
+              <SolicitudesView
+                solicitudes={solicitudesAlumnos.solicitudes}
+                cargando={solicitudesAlumnos.cargando}
+                errorCarga={solicitudesAlumnos.errorCarga}
+                disponible={solicitudesAlumnos.disponible}
+                onRecargar={solicitudesAlumnos.recargar}
+                onAtender={handleAtenderSolicitud}
+                onRechazar={solicitudesAlumnos.rechazar}
+                onRegresarAPendiente={(id) =>
+                  conAviso(
+                    () => solicitudesAlumnos.regresarAPendiente(id),
+                    'No se pudo regresar la solicitud.',
+                  )
+                }
+                onDescargarVoucher={solicitudesAlumnos.descargarVoucher}
               />
             )}
             {view === VISTA.PLANTILLAS && (

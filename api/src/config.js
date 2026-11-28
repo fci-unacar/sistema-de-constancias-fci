@@ -14,6 +14,8 @@ export const config = {
   port: Number(process.env.PORT) || 3000,
   /** Tabla contra la que /health hace su consulta mínima. */
   healthTable: process.env.HEALTH_TABLE ?? 'constancias',
+  /** Dominio de correo con el que entran los alumnos al portal (ver alumnos.js). */
+  alumnosDominio: (process.env.ALUMNOS_DOMINIO ?? 'delfin.unacar.mx').trim().toLowerCase(),
 };
 
 /** La base de datos solo se considera configurada si están la URL y la llave. */

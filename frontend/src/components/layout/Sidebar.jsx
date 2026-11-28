@@ -3,6 +3,7 @@ import Icon from '../atoms/Icon';
 
 const NAV_ITEMS = [
   { view: VISTA.INICIO, label: 'Inicio', icon: 'space_dashboard' },
+  { view: VISTA.SOLICITUDES, label: 'Solicitudes de Alumnos', icon: 'inbox' },
   { view: VISTA.HISTORIAL, label: 'Historial de Constancias', icon: 'dataset' },
   { view: VISTA.NUEVA_NORMAL, label: 'Nueva: Reinscripción', icon: 'assignment_turned_in' },
   { view: VISTA.NUEVA_PROMEDIO, label: 'Nueva: Promedio', icon: 'grade' },
@@ -12,7 +13,7 @@ const NAV_ITEMS = [
   { view: VISTA.PLANTILLAS, label: 'Configuración de Plantillas', icon: 'draw' },
 ];
 
-export default function Sidebar({ view, onChangeView, user, onLogout }) {
+export default function Sidebar({ view, onChangeView, user, onLogout, solicitudesPendientes = 0 }) {
   return (
     <aside className="fixed left-0 top-0 z-50 flex h-full w-gutter-sidebar flex-col justify-between bg-primary-container shadow-[0_1px_8px_rgba(0,0,0,0.08)]">
       <div className="flex flex-col">
@@ -47,7 +48,15 @@ export default function Sidebar({ view, onChangeView, user, onLogout }) {
                 }`}
               >
                 <Icon name={item.icon} className="text-[18px]" />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.view === VISTA.SOLICITUDES && solicitudesPendientes > 0 && (
+                  <span
+                    className="min-w-[20px] rounded-full bg-error px-space-2xs text-center font-bold text-on-error text-label-sm"
+                    title={`${solicitudesPendientes} pendiente(s)`}
+                  >
+                    {solicitudesPendientes}
+                  </span>
+                )}
               </button>
             );
           })}

@@ -13,15 +13,12 @@
 import { Router } from 'express';
 import { requireAuth } from './auth.js';
 import { getSupabase } from './supabase.js';
-import { esFechaValida } from './validacion.js';
+import { esFechaValida, TIPOS, UUID_RE } from './validacion.js';
 
 export const datosRouter = Router();
 datosRouter.use(requireAuth);
 
-// Igual que frontend/src/constants/tipos.js y el check de la tabla.
-const TIPOS = new Set(['normal', 'promedio', 'buena-conducta', 'terminacion']);
 const ESTADOS = new Set(['vigente', 'anulada']);
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Un respaldo grande del navegador cabe de sobra; esto solo frena abusos. */
 const MAX_IMPORTAR = 5000;
 

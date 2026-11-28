@@ -7,14 +7,18 @@ import { todayStr } from '../utils/spanishText';
 import { semestreParaFecha, periodosDeSemestre } from '../hooks/useCalendario';
 import { requiredKeys } from '../data/formFields';
 
-/** Una constancia nueva arranca con los periodos del semestre vigente según el calendario escolar. */
+/**
+ * Una constancia nueva arranca con los periodos del semestre vigente según
+ * el calendario escolar. initialData (duplicar una constancia, o los datos
+ * de una solicitud de alumno) va encima y gana en los campos que traiga.
+ */
 function initialState(tipo, initialData, calendario) {
-  if (initialData) return initialData;
   const semestre = semestreParaFecha(calendario, todayStr());
   return {
     ...(semestre ? periodosDeSemestre(requiredKeys(tipo), semestre) : {}),
     fechaExpedicion: todayStr(),
     fechaConsulta: todayStr(),
+    ...initialData,
   };
 }
 

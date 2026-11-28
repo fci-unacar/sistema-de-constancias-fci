@@ -169,6 +169,33 @@ false where email = '...';`. La lista se revisa al entrar y en cada
    prueba y revisar que no caigan en "Correo no deseado". Con un SMTP bien
    configurado (dominio verificado, SPF/DKIM) es raro que pase.
 
+### Portal de alumnos (`/alumnos`)
+
+La misma aplicación sirve un segundo portal en
+`https://<frontend>/alumnos` (ver `frontend/src/lib/portal.js`):
+
+1. **Entrada sin contraseña**: el alumno escribe su correo institucional
+   (`@delfin.unacar.mx`, configurable con `ALUMNOS_DOMINIO` en la API), le
+   llega un código y con él entra. No hay que darlo de alta: cualquier
+   correo del dominio puede entrar. Esa sesión **no** abre el panel de
+   Secretaría, que sigue exigiendo estar en `usuarios_autorizados`.
+2. **Solicitud**: llena nombre completo, matrícula, programa educativo,
+   tipo de constancia y adjunta su **voucher de pago** (PDF, JPG o PNG,
+   máximo 5 MB). Puede tener hasta 5 solicitudes pendientes a la vez.
+3. **Bandeja de Secretaría**: en el panel aparece "Solicitudes de Alumnos"
+   con un contador de pendientes. Desde ahí se ve el voucher y se
+   **genera** la constancia (abre el formulario del tipo pedido con los datos
+   del alumno y las fechas del calendario; al generar, la solicitud queda
+   "lista" y ligada al folio) o se **rechaza** con un motivo.
+4. **Seguimiento**: el alumno ve en su panel si su solicitud está
+   pendiente, lista (pasa a recogerla, con su folio) o rechazada (con el
+   motivo).
+
+Las solicitudes viven en la tabla `solicitudes` y los vouchers en el
+bucket privado `vouchers` (migración
+`supabase/migrations/20261127000000_solicitudes_alumnos.sql`). Código:
+`api/src/alumnos.js` (portal) y `api/src/solicitudes.js` (bandeja).
+
 ### Seguridad: lo que falta antes de producción con datos reales
 
 Mientras `VITE_AUTH_ENABLED` no sea `true`, el login no protege nada. Y aun
@@ -349,6 +376,9 @@ se sigue llenando a mano.
 
 ## Pantallas
 
+- **Solicitudes de Alumnos**: bandeja con las solicitudes del portal
+  `/alumnos` (pendientes, listas, rechazadas), el voucher de cada una y los
+  botones para generar la constancia o rechazarla. Ver "Portal de alumnos".
 - **Inicio**: total de constancias generadas, desglose por tipo, folio más
   reciente, cuántas están anuladas, y las últimas 5 constancias — todo
   calculado a partir del historial que ya existe, sin backend adicional.
@@ -419,6 +449,7 @@ público**. Por eso aquí no va ninguna llave de Supabase.
 | `FRONTEND_URL`              | Origen permitido por CORS, sin barra final | La URL que da Vercel                             |
 | `PORT`                      | Puerto de escucha                          | Render la inyecta sola; en local, 3000           |
 | `HEALTH_TABLE`              | Tabla que consulta `/health` (opcional)    | Por defecto `constancias`                        |
+| `ALUMNOS_DOMINIO`           | Dominio de correo de los alumnos (opcional) | Por defecto `delfin.unacar.mx`                   |
 
 ### GitHub Actions
 
