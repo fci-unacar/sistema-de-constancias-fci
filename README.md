@@ -202,7 +202,12 @@ La misma aplicación sirve un segundo portal en
      `20261128000000_tomar_solicitudes.sql`).
 4. **Seguimiento**: el alumno ve en su panel si su solicitud está
    pendiente, lista (pasa a recogerla, con su folio) o rechazada (con el
-   motivo).
+   motivo). Además, cuando Secretaría la marca lista o la rechaza, le llega
+   un **correo** con el mismo aviso y el enlace al portal
+   (`api/src/correo.js`, configurado con `SMTP_USER` y `SMTP_PASS`). Si
+   el correo no sale, el cambio de estado se guarda igual y Secretaría lo ve
+   en el aviso de la pantalla. Los avisos comparten con los códigos de
+   acceso el tope de Gmail (unos 500 correos al día).
 
 Las solicitudes viven en la tabla `solicitudes` y los vouchers en el
 bucket privado `vouchers` (migración
@@ -463,6 +468,8 @@ público**. Por eso aquí no va ninguna llave de Supabase.
 | `PORT`                      | Puerto de escucha                          | Render la inyecta sola; en local, 3000           |
 | `HEALTH_TABLE`              | Tabla que consulta `/health` (opcional)    | Por defecto `constancias`                        |
 | `ALUMNOS_DOMINIO`           | Dominio de correo de los alumnos (opcional) | Por defecto `mail.unacar.mx`                     |
+| `SMTP_USER`                 | Gmail que manda los avisos a los alumnos    | La misma cuenta que usa Supabase para los códigos |
+| `SMTP_PASS`                 | Contraseña de aplicación de ese Gmail       | Cuenta de Google > Seguridad > Contraseñas de aplicación |
 
 ### GitHub Actions
 

@@ -16,6 +16,16 @@ export const config = {
   healthTable: process.env.HEALTH_TABLE ?? 'constancias',
   /** Dominio de correo con el que entran los alumnos al portal (ver alumnos.js). */
   alumnosDominio: (process.env.ALUMNOS_DOMINIO ?? 'mail.unacar.mx').trim().toLowerCase(),
+
+  // Correo saliente del sistema (avisos a los alumnos, ver correo.js). Sin
+  // SMTP_USER y SMTP_PASS no se manda ningún aviso; todo lo demás funciona.
+  smtpHost: process.env.SMTP_HOST ?? 'smtp.gmail.com',
+  smtpPort: Number(process.env.SMTP_PORT) || 465,
+  smtpUser: process.env.SMTP_USER ?? '',
+  smtpPass: process.env.SMTP_PASS ?? '',
+  smtpRemitente: process.env.SMTP_REMITENTE ?? 'Sistema de Constancias FCI',
+  /** Enlace al portal de alumnos que va en los avisos. */
+  portalAlumnosUrl: `${(process.env.FRONTEND_URL ?? 'http://localhost:5173').replace(/\/$/, '')}/alumnos`,
 };
 
 /** La base de datos solo se considera configurada si están la URL y la llave. */

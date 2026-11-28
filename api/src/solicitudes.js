@@ -17,6 +17,7 @@ import { requireAuth } from './auth.js';
 import { getSupabase } from './supabase.js';
 import { BUCKET_VOUCHERS } from './alumnos.js';
 import { UUID_RE } from './validacion.js';
+import { avisarAlumno } from './correo.js';
 
 export const solicitudesRouter = Router();
 solicitudesRouter.use(requireAuth);
@@ -142,7 +143,11 @@ async function responderConflicto(res, id) {
 }
 
 /** Ejecuta una función de la base sobre una solicitud y responde con la fila actualizada o el conflicto. */
-async function ejecutar(res, id, funcion, parametros, contexto) {
+/**
+ * @param {(fila: object) => Promise<object>} [despues] corre con la fila ya
+ * actualizada; lo que devuelve se agrega a la respuesta (p. ej. el aviso por correo).
+ */
+async function ejecutar(res, id, funcion, parametros, contexto, despues) {
   try {
     const { data, error } = await getSupabase().rpc(funcion, parametros);
     if (error) {
@@ -151,7 +156,9 @@ async function ejecutar(res, id, funcion, parametros, contexto) {
       return falloDeBase(res, error, contexto);
     }
     if (!data?.length) return await responderConflicto(res, id);
-    return res.json({ solicitud: aFrontend(await leerSolicitud(id)) });
+    const fila = await leerSolicitud(id);
+    const extra = despues ? await despues(fila) : {};
+    return res.json({ solicitud: aFrontend(fila), ...extra });
   } catch (error) {
     return falloDeBase(res, error, contexto);
   }
@@ -252,5 +259,17 @@ solicitudesRouter.patch('/:id', async (req, res) => {
     'cerrar_solicitud',
     { p_id: id, p_email: req.user.email, p_estado: estado, p_motivo: motivoLimpio, p_constancia_id: constancia },
     'No se pudo actualizar la solicitud',
+    // Ya quedó lista o rechazada: avisarle al alumno por correo (ver correo.js).
+    // Si el correo falla, el cambio de estado se queda; la respuesta dice cómo le fue.
+    async (fila) => ({
+      notificacion: await avisarAlumno({
+        email: fila.alumno_email,
+        nombre: fila.nombre,
+        tipo: fila.tipo,
+        estado: fila.estado,
+        motivo: fila.motivo_rechazo,
+        folio: fila.constancias?.folio ?? null,
+      }),
+    }),
   );
 });

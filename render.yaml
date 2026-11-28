@@ -23,3 +23,8 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      # Avisos por correo a los alumnos (ver api/src/correo.js).
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
