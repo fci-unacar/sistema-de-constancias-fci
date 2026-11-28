@@ -17,6 +17,7 @@ import { useSolicitudes } from './hooks/useSolicitudes';
 import { useToast } from './hooks/useToast';
 import { VISTA, TIPO_POR_VISTA, VISTA_POR_TIPO } from './constants/tipos';
 import { todayStr } from './utils/spanishText';
+import { textoAvisoCorreo } from './constants/solicitudes';
 
 export default function App({ user, onLogout }) {
   const [view, setView] = useState(VISTA.INICIO);
@@ -117,8 +118,8 @@ export default function App({ user, onLogout }) {
     let avisoSolicitud = '';
     if (solicitud) {
       try {
-        await solicitudesAlumnos.marcarLista(solicitud.id, entry.id);
-        avisoSolicitud = ' La solicitud del alumno quedó como lista.';
+        const { notificacion } = await solicitudesAlumnos.marcarLista(solicitud.id, entry.id);
+        avisoSolicitud = ` La solicitud del alumno quedó como lista.${textoAvisoCorreo(notificacion)}`;
       } catch (error) {
         console.error('No se pudo marcar la solicitud como lista:', error);
         avisoSolicitud = ` No se pudo marcar la solicitud como lista: ${error.message}`;
@@ -290,7 +291,11 @@ export default function App({ user, onLogout }) {
                 onSoltar={(id) =>
                   conAviso(() => solicitudesAlumnos.soltar(id), 'No se pudo soltar la solicitud.')
                 }
-                onRechazar={solicitudesAlumnos.rechazar}
+                onRechazar={async (id, motivo) => {
+                  // Si falla, RechazoModal muestra el error y se queda abierto.
+                  const { notificacion } = await solicitudesAlumnos.rechazar(id, motivo);
+                  showToast(`Solicitud rechazada.${textoAvisoCorreo(notificacion)}`);
+                }}
                 onRegresarAPendiente={(id) =>
                   conAviso(
                     () => solicitudesAlumnos.regresarAPendiente(id),

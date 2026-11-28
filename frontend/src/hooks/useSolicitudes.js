@@ -43,16 +43,17 @@ export function useSolicitudes() {
   }, [cargar]);
 
   /**
-   * Manda una operación sobre una solicitud y reemplaza la fila con lo que
-   * devuelve la API. Si responde 409 (otra persona la tomó o ya la
+   * Manda una operación sobre una solicitud, reemplaza la fila con lo que
+   * devuelve la API y regresa la respuesta completa ({ solicitud, notificacion? }). Si responde 409 (otra persona la tomó o ya la
    * atendió), recarga la bandeja para que se vea quién y vuelve a lanzar el
    * error con el mensaje para mostrar.
    */
   async function operar(id, path, options) {
     try {
-      const { solicitud } = await apiFetch(path, options);
-      setSolicitudes((prev) => prev.map((s) => (s.id === id ? solicitud : s)));
-      return solicitud;
+      // La respuesta trae la solicitud y, al cerrarla, cómo le fue al aviso por correo.
+      const respuesta = await apiFetch(path, options);
+      setSolicitudes((prev) => prev.map((s) => (s.id === id ? respuesta.solicitud : s)));
+      return respuesta;
     } catch (error) {
       if (error.status === 409) cargar();
       throw error;

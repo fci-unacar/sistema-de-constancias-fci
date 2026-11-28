@@ -17,6 +17,16 @@ export const ESTADO_SOLICITUD_CLASS = {
   [ESTADO_SOLICITUD.RECHAZADA]: 'bg-error-container text-on-error-container',
 };
 
+/**
+ * Texto para Secretaría según cómo le fue al aviso por correo al alumno
+ * (ver api/src/correo.js). Vacío si el correo no está configurado.
+ */
+export function textoAvisoCorreo(notificacion) {
+  if (notificacion === 'enviada') return ' Se le avisó al alumno por correo.';
+  if (notificacion === 'fallo') return ' No se pudo avisar al alumno por correo; lo verá en su portal.';
+  return '';
+}
+
 /** Igual que el límite del bucket "vouchers" en Supabase. */
 export const MAX_VOUCHER_BYTES = 5 * 1024 * 1024;
 
